@@ -1,5 +1,5 @@
-import { prisma } from '../lib/database';
-import { Client } from '../types';
+import { prisma } from '../lib/database.js';
+import { Client } from '../types/index.js';
 
 export class ClientService {
   // Buscar todos os clientes
@@ -8,13 +8,13 @@ export class ClientService {
       orderBy: { createdAt: 'desc' }
     });
     
-    return clients.map(client => ({
+    return clients.map((client) => ({
       id: client.id,
       name: client.name,
       email: client.email,
-      company: client.company,
-      phone: client.phone,
-      notes: client.notes,
+      company: client.company || undefined,
+      phone: client.phone || undefined,
+      notes: client.notes || undefined,
       status: client.status.toLowerCase() as 'active' | 'suspended' | 'blocked',
       createdAt: client.createdAt
     }));
@@ -32,9 +32,9 @@ export class ClientService {
       id: client.id,
       name: client.name,
       email: client.email,
-      company: client.company,
-      phone: client.phone,
-      notes: client.notes,
+      company: client.company || undefined,
+      phone: client.phone || undefined,
+      notes: client.notes || undefined,
       status: client.status.toLowerCase() as 'active' | 'suspended' | 'blocked',
       createdAt: client.createdAt
     };
@@ -57,9 +57,9 @@ export class ClientService {
       id: client.id,
       name: client.name,
       email: client.email,
-      company: client.company,
-      phone: client.phone,
-      notes: client.notes,
+      company: client.company || undefined,
+      phone: client.phone || undefined,
+      notes: client.notes || undefined,
       status: client.status.toLowerCase() as 'active' | 'suspended' | 'blocked',
       createdAt: client.createdAt
     };
@@ -85,9 +85,9 @@ export class ClientService {
       id: client.id,
       name: client.name,
       email: client.email,
-      company: client.company,
-      phone: client.phone,
-      notes: client.notes,
+      company: client.company || undefined,
+      phone: client.phone || undefined,
+      notes: client.notes || undefined,
       status: client.status.toLowerCase() as 'active' | 'suspended' | 'blocked',
       createdAt: client.createdAt
     };
@@ -113,13 +113,13 @@ export class ClientService {
       orderBy: { createdAt: 'desc' }
     });
 
-    return clients.map(client => ({
+    return clients.map((client) => ({
       id: client.id,
       name: client.name,
       email: client.email,
-      company: client.company,
-      phone: client.phone,
-      notes: client.notes,
+      company: client.company || undefined,
+      phone: client.phone || undefined,
+      notes: client.notes || undefined,
       status: client.status.toLowerCase() as 'active' | 'suspended' | 'blocked',
       createdAt: client.createdAt
     }));

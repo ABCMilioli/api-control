@@ -1,21 +1,20 @@
-
 interface LogLevel {
-  ERROR: 'error';
-  WARN: 'warn';
-  INFO: 'info';
-  DEBUG: 'debug';
+  ERROR: 'ERROR';
+  WARN: 'WARN';
+  INFO: 'INFO';
+  DEBUG: 'DEBUG';
 }
 
 const LOG_LEVELS: LogLevel = {
-  ERROR: 'error',
-  WARN: 'warn',
-  INFO: 'info',
-  DEBUG: 'debug'
+  ERROR: 'ERROR',
+  WARN: 'WARN',
+  INFO: 'INFO',
+  DEBUG: 'DEBUG'
 };
 
 interface LogEntry {
   timestamp: string;
-  level: keyof LogLevel;
+  level: string;
   message: string;
   data?: any;
   userId?: string;
@@ -35,7 +34,7 @@ class Logger {
     });
   }
 
-  private log(level: keyof LogLevel, message: string, data?: any, context?: Partial<LogEntry>) {
+  private log(level: string, message: string, data?: any, context?: Partial<LogEntry>) {
     const logEntry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
@@ -89,12 +88,12 @@ class Logger {
   }
 
   // Método para logs de database
-  database(operation: string, table?: string, duration?: number, error?: any) {
+  database(operation: any, table?: any, duration?: any, error?: any) {
     if (error) {
       this.error(`Database error: ${operation}`, {
         operation,
         table,
-        error: error.message || error,
+        error: error?.message || error,
         duration: duration ? `${duration}ms` : undefined
       });
     } else {

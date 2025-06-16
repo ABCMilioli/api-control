@@ -1,6 +1,5 @@
-
 import { PrismaClient } from '@prisma/client';
-import { logger } from './logger';
+import { logger } from './logger.js';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -28,21 +27,21 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
 });
 
 // Configurar logs do Prisma
-prisma.$on('query', (e) => {
-  logger.database('query', undefined, e.duration, undefined);
-});
-
-prisma.$on('error', (e) => {
-  logger.database('error', e.target, undefined, e);
-});
-
-prisma.$on('info', (e) => {
-  logger.database('info', e.target, undefined, e.message);
-});
-
-prisma.$on('warn', (e) => {
-  logger.database('warn', e.target, undefined, e.message);
-});
+// prisma.$on('query', (e: any) => {
+//   logger.database((e.level as any), undefined, e.duration, undefined);
+// });
+//
+// prisma.$on('error', (e: any) => {
+//   logger.database((e.level as any), e.target, undefined, e);
+// });
+//
+// prisma.$on('info', (e: any) => {
+//   logger.database((e.level as any), e.target, undefined, e.message);
+// });
+//
+// prisma.$on('warn', (e: any) => {
+//   logger.database((e.level as any), e.target, undefined, e.message);
+// });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 

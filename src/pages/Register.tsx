@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -40,16 +39,26 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // Mock registration - em produção seria uma chamada API
-      console.log('Registering admin user:', formData);
-      
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: formData.nome,
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao criar usuário');
+      }
+
       toast({
         title: "Sucesso",
         description: "Usuário administrador criado com sucesso!",
         variant: "default"
       });
-      
-      // Reset form
+
       setFormData({
         nome: '',
         email: '',

@@ -1,6 +1,6 @@
-
 import { create } from 'zustand';
-import { Installation } from '../types';
+import { persist } from 'zustand/middleware';
+import { Installation } from '../types/index.js';
 
 interface InstallationState {
   installations: Installation[];

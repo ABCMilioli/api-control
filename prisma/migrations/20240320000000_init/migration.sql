@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "Role" AS ENUM ('ADMIN', 'USER');
+CREATE TYPE "role" AS ENUM ('ADMIN', 'USER');
 
 -- CreateEnum
 CREATE TYPE "ClientStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'BLOCKED');
@@ -18,7 +18,7 @@ CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "nome" TEXT NOT NULL,
-    "role" "Role" NOT NULL DEFAULT 'USER',
+    "role" "role" NOT NULL DEFAULT 'USER',
     "ativo" BOOLEAN NOT NULL DEFAULT true,
     "dataCriacao" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "dataAtualizacao" TIMESTAMP(3) NOT NULL,

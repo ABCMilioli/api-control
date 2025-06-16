@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction, ErrorRequestHandler, RequestH
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
+import { userRouter } from './routes/user.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -77,6 +78,12 @@ const serveIndex: RequestHandler = (req: Request, res: Response): void => {
 };
 
 app.get('*', serveIndex);
+
+// Middleware para parsing de JSON
+app.use(express.json());
+
+// Rotas da API
+app.use('/api/users', userRouter);
 
 // Tratamento de erros
 const errorHandler: ErrorRequestHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {

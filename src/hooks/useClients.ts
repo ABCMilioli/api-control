@@ -1,5 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useToast } from './use-toast';
+import { useToast } from './use-toast.js';
+import { useState, useEffect } from 'react';
+import { toast } from './use-toast.js';
+import { Client } from '../types/index.js';
 
 // Funções para consumir a API REST
 const API_URL = '/api/clients';

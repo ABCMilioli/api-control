@@ -1,5 +1,5 @@
-
-import { logger } from './lib/logger';
+import { Request, Response } from 'express';
+import { logger } from './lib/logger.js';
 
 // Simple health check endpoint for Docker Swarm/Traefik
 export const healthCheck = () => {

@@ -1,6 +1,6 @@
-
 import { create } from 'zustand';
-import { Client } from '../types';
+import { persist } from 'zustand/middleware';
+import { Client } from '../types/index.js';
 
 interface ClientState {
   clients: Client[];
