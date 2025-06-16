@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  api-control:
+    image: automacaodebaixocusto/api-control:latest
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.api-control-frontend.rule=Host(`api-control.iacas.top`)"
+        - "traefik.http.routers.api-control-frontend.entrypoints=websecure"
+        - "traefik.http.routers.api-control-frontend.tls=true"
+        - "traefik.http.routers.api-control-frontend.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.api-control-frontend.loadbalancer.server.port=3000"
+        - "traefik.docker.network=network_public"
+        - "traefik.http.services.api-control-frontend.loadbalancer.healthcheck.path=/health"
+        - "traefik.http.services.api-control-frontend.loadbalancer.healthcheck.interval=30s"
+    networks:
+      - network_public
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:131489152850082175195580@postgres:5432/api-control
+      - PORT=3000
+      - API_HOST=api-control.iacas.top
+      - USE_TLS=true
+      - VITE_API_HOST=api-control.iacas.top
+      - VITE_USE_TLS=true
+      - LOG_LEVEL=info
+      - DEBUG=false
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+networks:
+  network_public:
+    external: true
+    name: network_public

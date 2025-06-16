@@ -1,0 +1,243 @@
+
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  nome            String
+  role            Role     @default(USER)
+  ativo           Boolean  @default(true)
+  dataCriacao     DateTime @default(now())
+  dataAtualizacao DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Client {
+  id        String       @id @default(cuid())
+  name      String
+  email     String       @unique
+  company   String?
+  phone     String?
+  notes     String?
+  status    ClientStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+
+  // Relacionamentos
+  apiKeys APIKey[]
+
+  @@map("clients")
+}
+
+model APIKey {
+  id                   String    @id @default(cuid())
+  key                  String    @unique
+  clientId             String
+  clientName           String
+  clientEmail          String
+  maxInstallations     Int
+  currentInstallations Int       @default(0)
+  isActive             Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  expiresAt            DateTime?
+  lastUsed             DateTime?
+
+  // Relacionamentos
+  client        Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  installations Installation[]
+
+  @@map("api_keys")
+}
+
+model Installation {
+  id        String   @id @default(cuid())
+  apiKeyId  String
+  ipAddress String
+  userAgent String?
+  location  String?
+  timestamp DateTime @default(now())
+  success   Boolean  @default(false)
+
+  // Relacionamentos
+  apiKey APIKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@map("installations")
+}
+
+model PaymentGateway {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  displayName String
+  isActive    Boolean @default(false)
+  
+  // Configurações específicas do gateway
+  publicKey   String?
+  secretKey   String?
+  webhookUrl  String?
+  environment String  @default("sandbox") // sandbox ou production
+  
+  // Configurações específicas por gateway
+  config      Json?   // Para configurações específicas de cada gateway
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  plans    Plan[]
+  products Product[]
+  payments Payment[]
+
+  @@map("payment_gateways")
+}
+
+model Plan {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  price           Decimal  @db.Decimal(10, 2)
+  currency        String   @default("BRL")
+  interval        String   // monthly, yearly, etc
+  intervalCount   Int      @default(1)
+  trialDays       Int      @default(0)
+  maxUsers        Int?
+  maxInstallations Int?
+  features        Json?    // Array de features como JSON
+  isActive        Boolean  @default(true)
+  paymentGatewayId String
+  gatewayPlanId   String?  // ID do plano no gateway (Stripe, PayPal, etc)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relacionamentos
+  paymentGateway PaymentGateway @relation(fields: [paymentGatewayId], references: [id])
+  payments       Payment[]
+
+  @@map("plans")
+}
+
+model Product {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  price            Decimal  @db.Decimal(10, 2)
+  currency         String   @default("BRL")
+  type             ProductType @default(ONE_TIME)
+  maxInstallations Int?
+  features         Json?    // Array de features como JSON
+  isActive         Boolean  @default(true)
+  paymentGatewayId String
+  gatewayProductId String?  // ID do produto no gateway
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relacionamentos
+  paymentGateway PaymentGateway @relation(fields: [paymentGatewayId], references: [id])
+  payments       Payment[]
+
+  @@map("products")
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  paymentGatewayId String
+  planId           String?
+  productId        String?
+  clientEmail      String
+  amount           Decimal       @db.Decimal(10, 2)
+  currency         String        @default("BRL")
+  status           PaymentStatus @default(PENDING)
+  type             PaymentType   @default(ONE_TIME)
+  
+  // IDs externos do gateway
+  gatewayPaymentId String?
+  gatewayCustomerId String?
+  
+  // URLs e metadata
+  checkoutUrl      String?
+  successUrl       String?
+  cancelUrl        String?
+  webhookData      Json?
+  metadata         Json?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  paidAt           DateTime?
+  expiresAt        DateTime?
+
+  // Relacionamentos
+  paymentGateway PaymentGateway @relation(fields: [paymentGatewayId], references: [id])
+  plan           Plan?          @relation(fields: [planId], references: [id])
+  product        Product?       @relation(fields: [productId], references: [id])
+
+  @@map("payments")
+}
+
+model CheckoutConfig {
+  id                String   @id @default(cuid())
+  name              String
+  successUrl        String
+  cancelUrl         String
+  collectShipping   Boolean  @default(false)
+  collectBilling    Boolean  @default(true)
+  allowPromoCodes   Boolean  @default(false)
+  taxBehavior       String   @default("exclusive") // inclusive, exclusive
+  customFields      Json?    // Campos customizados do checkout
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("checkout_configs")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  USER
+
+  @@map("role")
+}
+
+enum ClientStatus {
+  ACTIVE
+  SUSPENDED
+  BLOCKED
+
+  @@map("client_status")
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
+
+  @@map("payment_status")
+}
+
+enum PaymentType {
+  ONE_TIME
+  RECURRING
+
+  @@map("payment_type")
+}
+
+enum ProductType {
+  ONE_TIME
+  SUBSCRIPTION
+
+  @@map("product_type")
+}
