@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -25,47 +24,31 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       initializeAuth: () => {
-        console.log('Initializing auth store...');
         const state = get();
-        console.log('Current auth state:', state);
-        
-        // Auto-login para desenvolvimento
         if (!state.isAuthenticated) {
-          console.log('Auto-login for development...');
           set({
-            user: {
-              id: '1',
-              nome: 'Admin',
-              email: 'admin@example.com',
-              role: 'Administrator'
-            },
-            isAuthenticated: true
+            user: null,
+            isAuthenticated: false
           });
         }
       },
 
       login: async (email: string, password: string) => {
-        console.log('Login attempt:', { email, password });
-        
         try {
-          // Simulação de login - em produção, faça a validação real
-          if (email && password) {
-            const user = {
-              id: '1',
-              nome: 'Admin User',
-              email: email,
-              role: 'Administrator'
-            };
-            
-            set({ user, isAuthenticated: true });
-            console.log('Login successful:', user);
-            return true;
+          const response = await fetch('/api/users/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+
+          if (!response.ok) {
+            return false;
           }
-          
-          console.log('Login failed: invalid credentials');
-          return false;
+
+          const user = await response.json();
+          set({ user, isAuthenticated: true });
+          return true;
         } catch (error) {
-          console.error('Login error:', error);
           return false;
         }
       },
@@ -84,14 +67,12 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        console.log('Logging out...');
         set({ user: null, isAuthenticated: false });
       },
     }),
     {
       name: 'auth-storage',
       onRehydrateStorage: () => (state) => {
-        console.log('Auth store rehydrated:', state);
         if (state) {
           state.initializeAuth();
         }
@@ -100,6 +81,4 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-// Inicializar automaticamente
-console.log('Auth store created, initializing...');
 useAuthStore.getState().initializeAuth();

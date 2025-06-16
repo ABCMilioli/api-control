@@ -33,12 +33,37 @@ const createUser: RequestHandler = async (req, res) => {
     const { password: _, ...userWithoutPassword } = user;
     res.status(201).json(userWithoutPassword);
   } catch (error) {
-    console.error('Erro ao criar usuário:', error);
-    res.status(500).json({ error: 'Erro ao criar usuário', details: error });
+    res.status(500).json({ error: 'Erro ao criar usuário' });
   }
 };
 
-// Registrar a rota
+// Handler da rota de login
+const loginUser: RequestHandler = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      res.status(400).json({ error: 'Email e senha são obrigatórios.' });
+      return;
+    }
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      res.status(401).json({ error: 'Credenciais inválidas.' });
+      return;
+    }
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      res.status(401).json({ error: 'Credenciais inválidas.' });
+      return;
+    }
+    const { password: _, ...userWithoutPassword } = user;
+    res.status(200).json(userWithoutPassword);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao fazer login' });
+  }
+};
+
+// Registrar as rotas
 router.post('/', createUser);
+router.post('/login', loginUser);
 
 export { router as userRouter }; 
