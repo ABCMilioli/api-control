@@ -32,21 +32,21 @@ const validateAPIKey: RequestHandler = async (req: Request, res: Response): Prom
     // Se a chave não existe ou está inativa
     if (!apiKeyData) {
       logger.warn('API Key inválida ou inativa', { apiKey });
-      
       // Registrar tentativa falha
       await prisma.installation.create({
         data: {
-          apiKeyId: 'invalid', // Usar um ID especial para chaves inválidas
+          apiKeyId: 'invalid',
           ipAddress,
           userAgent,
           location: geoip.lookup(ipAddress)?.city,
           success: false
         }
       });
-
       res.status(401).json({
         success: false,
-        error: 'API Key inválida ou inativa'
+        error: 'API_KEY_INACTIVE',
+        description: 'A chave de API informada está desativada ou não existe.',
+        code: 401
       });
       return;
     }
@@ -57,7 +57,6 @@ const validateAPIKey: RequestHandler = async (req: Request, res: Response): Prom
         apiKeyId: apiKeyData.id,
         expiresAt: apiKeyData.expiresAt 
       });
-
       await prisma.installation.create({
         data: {
           apiKeyId: apiKeyData.id,
@@ -67,10 +66,11 @@ const validateAPIKey: RequestHandler = async (req: Request, res: Response): Prom
           success: false
         }
       });
-
       res.status(401).json({
         success: false,
-        error: 'API Key expirada'
+        error: 'API_KEY_EXPIRED',
+        description: 'A chave de API informada está expirada.',
+        code: 401
       });
       return;
     }
@@ -82,7 +82,6 @@ const validateAPIKey: RequestHandler = async (req: Request, res: Response): Prom
         current: apiKeyData.currentInstallations,
         max: apiKeyData.maxInstallations
       });
-
       await prisma.installation.create({
         data: {
           apiKeyId: apiKeyData.id,
@@ -92,10 +91,11 @@ const validateAPIKey: RequestHandler = async (req: Request, res: Response): Prom
           success: false
         }
       });
-
       res.status(403).json({
         success: false,
-        error: 'Limite de instalações excedido'
+        error: 'INSTALLATION_LIMIT_EXCEEDED',
+        description: 'Limite de instalações excedido para esta chave.',
+        code: 403
       });
       return;
     }
@@ -139,10 +139,12 @@ const validateAPIKey: RequestHandler = async (req: Request, res: Response): Prom
       error: error instanceof Error ? error.message : 'Erro desconhecido',
       stack: error instanceof Error ? error.stack : undefined
     });
-
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erro interno ao validar API Key'
+      error: 'INTERNAL_ERROR',
+      description: 'Erro interno ao validar API Key. Tente novamente mais tarde.',
+      code: 500,
+      details: process.env.NODE_ENV === 'development' ? { stack: error instanceof Error ? error.stack : error } : undefined
     });
   }
 };
