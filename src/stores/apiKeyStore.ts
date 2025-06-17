@@ -31,7 +31,7 @@ export const useAPIKeyStore = create<APIKeyState>()((set, get) => ({
   fetchAPIKeys: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch('/api-keys');
+      const response = await fetch('/api/api-keys');
       if (!response.ok) throw new Error('Erro ao carregar API Keys');
       const apiKeys = await response.json();
       set({ apiKeys, loading: false });
@@ -43,7 +43,7 @@ export const useAPIKeyStore = create<APIKeyState>()((set, get) => ({
   addAPIKey: async (apiKey) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch('/api-keys', {
+      const response = await fetch('/api/api-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(apiKey)
@@ -62,7 +62,7 @@ export const useAPIKeyStore = create<APIKeyState>()((set, get) => ({
   updateAPIKey: async (id, updatedAPIKey) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`/api-keys/${id}`, {
+      const response = await fetch(`/api/api-keys/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedAPIKey)
@@ -81,7 +81,7 @@ export const useAPIKeyStore = create<APIKeyState>()((set, get) => ({
   revokeAPIKey: async (id) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`/api-keys/${id}/revoke`, {
+      const response = await fetch(`/api/api-keys/${id}/revoke`, {
         method: 'PUT'
       });
       if (!response.ok) throw new Error('Erro ao revogar API Key');
@@ -99,7 +99,7 @@ export const useAPIKeyStore = create<APIKeyState>()((set, get) => ({
   deleteAPIKey: async (id) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`/api-keys/${id}`, {
+      const response = await fetch(`/api/api-keys/${id}`, {
         method: 'DELETE'
       });
       if (!response.ok) throw new Error('Erro ao deletar API Key');

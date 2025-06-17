@@ -44,7 +44,7 @@ app.use(express.json());
 // Rotas da API
 app.use('/api/users', userRouter);
 app.use('/api/clients', clientRouter);
-app.use('/api-keys', apiKeyRouter);
+app.use('/api/api-keys', apiKeyRouter);
 
 // Rota de health check
 const healthCheck: RequestHandler = (req: Request, res: Response) => {

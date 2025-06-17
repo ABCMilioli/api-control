@@ -87,14 +87,18 @@ export function APIKeyTable() {
       <Card>
         <CardHeader>
           <CardTitle>Lista de API Keys</CardTitle>
-          <div className="flex gap-4">
-            <Input
-              placeholder="Buscar por cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
-            <Button onClick={() => setCreateModalOpen(true)}>Nova API Key</Button>
+          <div className="flex gap-4 w-full items-center">
+            <div className="flex-1">
+              <Input
+                placeholder="Buscar por cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+            <div className="flex-none ml-auto">
+              <Button onClick={() => setCreateModalOpen(true)}>Nova API Key</Button>
+            </div>
           </div>
         </CardHeader>
         

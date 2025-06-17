@@ -1,8 +1,5 @@
-
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
 import { Header } from '../components/Layout/Header';
-import { Button } from '../components/ui/button';
 import { APIKeyModal } from '../components/APIKeys/APIKeyModal';
 import { APIKeyTable } from '../components/APIKeys/APIKeyTable';
 
@@ -22,11 +19,6 @@ export default function APIKeys() {
             <h2 className="text-xl font-semibold">Chaves de API</h2>
             <p className="text-gray-600">Controle o acesso às suas aplicações</p>
           </div>
-          
-          <Button onClick={() => setModalOpen(true)} className="flex items-center gap-2">
-            <Plus size={16} />
-            Nova Chave
-          </Button>
         </div>
 
         <APIKeyTable />
