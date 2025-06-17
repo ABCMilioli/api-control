@@ -4,6 +4,7 @@ import { dirname, join } from 'path';
 import fs from 'fs';
 import { userRouter } from './routes/user.js';
 import { clientRouter } from './routes/client.js';
+import { apiKeyRouter } from './routes/apiKey.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -43,6 +44,7 @@ app.use(express.json());
 // Rotas da API
 app.use('/api/users', userRouter);
 app.use('/api/clients', clientRouter);
+app.use('/api-keys', apiKeyRouter);
 
 // Rota de health check
 const healthCheck: RequestHandler = (req: Request, res: Response) => {

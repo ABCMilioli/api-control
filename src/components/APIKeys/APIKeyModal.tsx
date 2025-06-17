@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -16,14 +15,20 @@ interface APIKeyModalProps {
 
 export function APIKeyModal({ open, onClose }: APIKeyModalProps) {
   const { addAPIKey, generateKey } = useAPIKeyStore();
-  const { clients } = useClientStore();
+  const { clients, fetchClients } = useClientStore();
   const [formData, setFormData] = useState({
     clientId: '',
     maxInstallations: '',
     expiresAt: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (open) {
+      fetchClients();
+    }
+  }, [open, fetchClients]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const selectedClient = clients.find(c => c.id === formData.clientId);
@@ -36,26 +41,34 @@ export function APIKeyModal({ open, onClose }: APIKeyModalProps) {
       return;
     }
 
-    const newKey = {
-      key: generateKey(),
-      clientId: formData.clientId,
-      clientName: selectedClient.name,
-      clientEmail: selectedClient.email,
-      maxInstallations: parseInt(formData.maxInstallations),
-      isActive: true,
-      expiresAt: formData.expiresAt ? new Date(formData.expiresAt) : null
-    };
+    try {
+      const newKey = {
+        key: generateKey(),
+        clientId: formData.clientId,
+        clientName: selectedClient.name,
+        clientEmail: selectedClient.email,
+        maxInstallations: parseInt(formData.maxInstallations),
+        isActive: true,
+        expiresAt: formData.expiresAt ? new Date(formData.expiresAt) : null
+      };
 
-    addAPIKey(newKey);
-    
-    toast({
-      title: "Sucesso",
-      description: "API Key criada com sucesso",
-      variant: "default"
-    });
+      await addAPIKey(newKey);
+      
+      toast({
+        title: "Sucesso",
+        description: "API Key criada com sucesso",
+        variant: "default"
+      });
 
-    setFormData({ clientId: '', maxInstallations: '', expiresAt: '' });
-    onClose();
+      setFormData({ clientId: '', maxInstallations: '', expiresAt: '' });
+      onClose();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao criar API Key",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

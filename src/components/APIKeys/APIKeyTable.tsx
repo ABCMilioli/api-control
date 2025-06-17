@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Copy, Edit, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -8,14 +8,20 @@ import { useAPIKeyStore } from '../../stores/apiKeyStore';
 import { useToast } from '../../hooks/use-toast';
 import { EditAPIKeyModal } from './EditAPIKeyModal';
 import { APIKey } from '../../types';
+import { APIKeyModal } from './APIKeyModal';
 
 export function APIKeyTable() {
-  const { apiKeys, revokeAPIKey, deleteAPIKey } = useAPIKeyStore();
+  const { apiKeys, revokeAPIKey, deleteAPIKey, fetchAPIKeys } = useAPIKeyStore();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingAPIKey, setEditingAPIKey] = useState<APIKey | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetchAPIKeys();
+  }, [fetchAPIKeys]);
 
   const filteredKeys = apiKeys.filter(key =>
     key.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -88,6 +94,7 @@ export function APIKeyTable() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-sm"
             />
+            <Button onClick={() => setCreateModalOpen(true)}>Nova API Key</Button>
           </div>
         </CardHeader>
         
@@ -153,7 +160,7 @@ export function APIKeyTable() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      {apiKey.createdAt.toLocaleDateString('pt-BR')}
+                      {new Date(apiKey.createdAt).toLocaleDateString('pt-BR')}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
@@ -188,6 +195,11 @@ export function APIKeyTable() {
         open={editModalOpen}
         onClose={handleCloseEditModal}
         apiKey={editingAPIKey}
+      />
+
+      <APIKeyModal 
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
       />
     </>
   );

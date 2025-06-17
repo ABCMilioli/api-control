@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -9,6 +8,7 @@ import { useAPIKeyStore } from '../../stores/apiKeyStore';
 import { useClientStore } from '../../stores/clientStore';
 import { useToast } from '../../hooks/use-toast';
 import { APIKey } from '../../types';
+import { Badge } from '../ui/badge';
 
 interface EditAPIKeyModalProps {
   open: boolean;
@@ -22,7 +22,6 @@ export function EditAPIKeyModal({ open, onClose, apiKey }: EditAPIKeyModalProps)
   const { toast } = useToast();
   
   const [formData, setFormData] = useState({
-    clientId: '',
     maxInstallations: '',
     expiresAt: '',
     isActive: true
@@ -30,51 +29,56 @@ export function EditAPIKeyModal({ open, onClose, apiKey }: EditAPIKeyModalProps)
 
   useEffect(() => {
     if (apiKey) {
+      // Converte a data de expiração para o formato do input date (YYYY-MM-DD)
+      let expiresAt = '';
+      if (apiKey.expiresAt) {
+        const date = new Date(apiKey.expiresAt);
+        if (!isNaN(date.getTime())) {
+          expiresAt = date.toISOString().split('T')[0];
+        }
+      }
+
       setFormData({
-        clientId: apiKey.clientId,
         maxInstallations: apiKey.maxInstallations.toString(),
-        expiresAt: apiKey.expiresAt ? apiKey.expiresAt.toISOString().split('T')[0] : '',
+        expiresAt,
         isActive: apiKey.isActive
       });
     }
   }, [apiKey, open]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!apiKey) return;
 
-    const selectedClient = clients.find(c => c.id === formData.clientId);
-    if (!selectedClient) {
+    try {
+      const updates = {
+        maxInstallations: parseInt(formData.maxInstallations),
+        expiresAt: formData.expiresAt ? new Date(formData.expiresAt) : null,
+        isActive: formData.isActive
+      };
+
+      await updateAPIKey(apiKey.id, updates);
+      
+      toast({
+        title: "Sucesso",
+        description: "API Key atualizada com sucesso",
+        variant: "default"
+      });
+
+      onClose();
+    } catch (error) {
       toast({
         title: "Erro",
-        description: "Selecione um cliente válido",
+        description: "Erro ao atualizar API Key",
         variant: "destructive"
       });
-      return;
     }
-
-    const updates = {
-      clientId: formData.clientId,
-      clientName: selectedClient.name,
-      clientEmail: selectedClient.email,
-      maxInstallations: parseInt(formData.maxInstallations),
-      expiresAt: formData.expiresAt ? new Date(formData.expiresAt) : null,
-      isActive: formData.isActive
-    };
-
-    updateAPIKey(apiKey.id, updates);
-    
-    toast({
-      title: "Sucesso",
-      description: "API Key atualizada com sucesso",
-      variant: "default"
-    });
-
-    onClose();
   };
 
   if (!apiKey) return null;
+
+  const selectedClient = clients.find(c => c.id === apiKey.clientId);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -86,20 +90,12 @@ export function EditAPIKeyModal({ open, onClose, apiKey }: EditAPIKeyModalProps)
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="client">Cliente</Label>
-            <Select value={formData.clientId} onValueChange={(value) => 
-              setFormData(prev => ({ ...prev, clientId: value }))
-            }>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map(client => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.name} ({client.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-50">
+              <div>
+                <p className="font-medium">{apiKey.clientName}</p>
+                <p className="text-sm text-gray-500">{apiKey.clientEmail}</p>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -132,20 +128,19 @@ export function EditAPIKeyModal({ open, onClose, apiKey }: EditAPIKeyModalProps)
 
           <div>
             <Label htmlFor="isActive">Status</Label>
-            <Select 
-              value={formData.isActive ? 'active' : 'inactive'} 
-              onValueChange={(value) => 
-                setFormData(prev => ({ ...prev, isActive: value === 'active' }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Ativa</SelectItem>
-                <SelectItem value="inactive">Inativa</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Badge variant={formData.isActive ? "default" : "secondary"}>
+                {formData.isActive ? 'Ativa' : 'Inativa'}
+              </Badge>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setFormData(prev => ({ ...prev, isActive: !prev.isActive }))}
+              >
+                {formData.isActive ? 'Desativar' : 'Ativar'}
+              </Button>
+            </div>
           </div>
 
           <DialogFooter>
