@@ -1,5 +1,6 @@
 import { prisma } from '../lib/database.js';
 import { Client } from '../types/index.js';
+import { notificationService } from './notificationService.js';
 
 function normalizeClient(client: any): Client {
   return {
@@ -71,6 +72,14 @@ export const clientService = {
         status: status || 'ACTIVE'
       }
     });
+
+    // Criar notificação para o novo cliente
+    await notificationService.createNotification({
+      title: 'Novo Cliente Cadastrado',
+      message: `${name} foi cadastrado no sistema${company ? ` (${company})` : ''}`,
+      type: 'success'
+    });
+
     return normalizeClient(client);
   },
 

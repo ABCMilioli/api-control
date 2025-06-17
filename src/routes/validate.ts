@@ -2,6 +2,7 @@ import { Router, Request, Response, RequestHandler } from 'express';
 import { prisma } from '../lib/database.js';
 import { logger } from '../lib/logger.js';
 import geoip from 'geoip-lite';
+import { notificationService } from '../services/notificationService.js';
 
 const router = Router();
 
@@ -56,6 +57,14 @@ const validateAPIKey: RequestHandler = async (req: Request, res: Response): Prom
         apiKeyId: apiKeyData.id,
         expiresAt: apiKeyData.expiresAt 
       });
+
+      // Criar notificação para a expiração da API Key
+      await notificationService.createNotification({
+        title: 'API Key Expirada',
+        message: `A API Key do cliente ${apiKeyData.clientName} expirou em ${new Date(apiKeyData.expiresAt).toLocaleDateString('pt-BR')}`,
+        type: 'error'
+      });
+
       await prisma.installation.create({
         data: {
           apiKeyId: apiKeyData.id,

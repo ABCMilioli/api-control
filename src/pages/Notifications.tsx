@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { Bell, X, Check, AlertCircle, Info, MailOpen, Trash2, Filter } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -14,41 +13,6 @@ interface Notification {
   timestamp: Date;
   read: boolean;
 }
-
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    title: 'API Key Expirando',
-    message: 'A API Key da TechCorp Solutions expira em 7 dias',
-    type: 'warning',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 min ago
-    read: false
-  },
-  {
-    id: '2',
-    title: 'Limite Atingido',
-    message: 'Digital Dynamics atingiu o limite máximo de instalações',
-    type: 'error',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    read: false
-  },
-  {
-    id: '3',
-    title: 'Nova Instalação',
-    message: 'InnovaTech Ltd criou uma nova instalação',
-    type: 'success',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-    read: true
-  },
-  {
-    id: '4',
-    title: 'Sistema Atualizado',
-    message: 'Sistema foi atualizado para versão 2.1.0',
-    type: 'info',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    read: true
-  }
-];
 
 const getNotificationIcon = (type: Notification['type']) => {
   switch (type) {
@@ -66,50 +30,122 @@ const getNotificationIcon = (type: Notification['type']) => {
 
 const formatTimestamp = (date: Date) => {
   const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / (1000 * 60));
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const diff = now.getTime() - new Date(date).getTime();
+  
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
 
   if (minutes < 60) {
-    return `${minutes}m atrás`;
+    return `${minutes} minuto${minutes !== 1 ? 's' : ''} atrás`;
   } else if (hours < 24) {
-    return `${hours}h atrás`;
+    return `${hours} hora${hours !== 1 ? 's' : ''} atrás`;
   } else {
-    return `${days}d atrás`;
+    return `${days} dia${days !== 1 ? 's' : ''} atrás`;
   }
 };
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
-  const navigate = useNavigate();
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const filteredNotifications = filter === 'all' 
+    ? notifications 
+    : notifications.filter(n => !n.read);
 
-  const filteredNotifications = filter === 'unread'
-    ? notifications.filter(n => !n.read)
-    : notifications;
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao buscar notificações');
+      }
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id
-          ? { ...notification, read: true }
-          : notification
-      )
-    );
+      const data = await response.json();
+      setNotifications(data);
+    } catch (err) {
+      console.error('Erro ao buscar notificações:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, read: true }))
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      const response = await fetch(`/api/notifications/${id}/read`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao marcar notificação como lida');
+      }
+
+      setNotifications(prevNotifications =>
+        prevNotifications.map(notification =>
+          notification.id === id
+            ? { ...notification, read: true }
+            : notification
+        )
+      );
+    } catch (err) {
+      console.error('Erro ao marcar notificação como lida:', err);
+    }
   };
 
-  const removeNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch('/api/notifications/read-all', {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao marcar todas as notificações como lidas');
+      }
+
+      setNotifications(prevNotifications =>
+        prevNotifications.map(notification => ({ ...notification, read: true }))
+      );
+    } catch (err) {
+      console.error('Erro ao marcar todas as notificações como lidas:', err);
+    }
   };
+
+  const deleteNotification = async (id: string) => {
+    try {
+      const response = await fetch(`/api/notifications/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao deletar notificação');
+      }
+
+      setNotifications(prevNotifications =>
+        prevNotifications.filter(notification => notification.id !== id)
+      );
+    } catch (err) {
+      console.error('Erro ao deletar notificação:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   return (
     <div className="container mx-auto py-10">
@@ -139,7 +175,11 @@ export default function Notifications() {
             </Button>
           </div>
 
-          {filteredNotifications.length === 0 ? (
+          {loading ? (
+            <div className="p-4 text-center text-gray-500">
+              Carregando notificações...
+            </div>
+          ) : filteredNotifications.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
               Nenhuma notificação encontrada.
             </div>
@@ -175,17 +215,32 @@ export default function Notifications() {
                         </p>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeNotification(notification.id);
-                      }}
-                      className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600"
-                    >
-                      <Trash2 size={12} />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {!notification.read && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markAsRead(notification.id);
+                          }}
+                          className="w-8 h-8 p-0"
+                        >
+                          <MailOpen size={16} className="text-gray-400" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteNotification(notification.id);
+                        }}
+                        className="w-8 h-8 p-0"
+                      >
+                        <Trash2 size={16} className="text-gray-400" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

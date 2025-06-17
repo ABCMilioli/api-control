@@ -7,6 +7,7 @@ import { clientRouter } from './routes/client.js';
 import { apiKeyRouter } from './routes/apiKey.js';
 import { validateRouter } from './routes/validate.js';
 import { installationRouter } from './routes/installation.js';
+import notificationRouter from './routes/notificationRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -43,12 +44,21 @@ app.use(express.static(staticPath, {
 // Middleware para parsing de JSON
 app.use(express.json());
 
+// Middleware de CORS
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  next();
+});
+
 // Rotas da API
 app.use('/api/users', userRouter);
 app.use('/api/clients', clientRouter);
 app.use('/api/api-keys', apiKeyRouter);
 app.use('/api/validate', validateRouter);
 app.use('/api/installations', installationRouter);
+app.use('/api/notifications', notificationRouter);
 
 // Rota de health check
 const healthCheck: RequestHandler = (req: Request, res: Response) => {
