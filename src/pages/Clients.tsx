@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Plus, Building, Mail, Phone, Edit2, Loader2 } from 'lucide-react';
 import { Header } from '../components/Layout/Header';
@@ -155,7 +154,7 @@ export default function Clients() {
                       
                       <div className="pt-2 border-t">
                         <p className="text-xs text-gray-500">
-                          Cliente desde {client.createdAt.toLocaleDateString('pt-BR')}
+                          Cliente desde {new Date(client.createdAt).toLocaleDateString('pt-BR')}
                         </p>
                       </div>
                     </CardContent>

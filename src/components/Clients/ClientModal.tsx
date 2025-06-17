@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -7,15 +6,13 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { useCreateClient, useUpdateClient } from '../../hooks/useClients';
-import { Client } from '../../types';
+import { Client, ClientStatus } from '../../types/index.js';
 
 interface ClientModalProps {
   open: boolean;
   onClose: () => void;
   client?: Client | null;
 }
-
-type ClientStatus = 'active' | 'suspended' | 'blocked';
 
 export function ClientModal({ open, onClose, client }: ClientModalProps) {
   const createClientMutation = useCreateClient();
@@ -27,7 +24,7 @@ export function ClientModal({ open, onClose, client }: ClientModalProps) {
     company: '',
     phone: '',
     notes: '',
-    status: 'active' as ClientStatus
+    status: 'ACTIVE'
   });
 
   const isEditing = !!client;
@@ -41,7 +38,7 @@ export function ClientModal({ open, onClose, client }: ClientModalProps) {
         company: client.company || '',
         phone: client.phone || '',
         notes: client.notes || '',
-        status: client.status as ClientStatus
+        status: client.status
       });
     } else {
       setFormData({
@@ -50,7 +47,7 @@ export function ClientModal({ open, onClose, client }: ClientModalProps) {
         company: '',
         phone: '',
         notes: '',
-        status: 'active'
+        status: 'ACTIVE'
       });
     }
   }, [client, open]);
@@ -157,9 +154,9 @@ export function ClientModal({ open, onClose, client }: ClientModalProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Ativo</SelectItem>
-                  <SelectItem value="suspended">Suspenso</SelectItem>
-                  <SelectItem value="blocked">Bloqueado</SelectItem>
+                  <SelectItem value="ACTIVE">Ativo</SelectItem>
+                  <SelectItem value="SUSPENDED">Suspenso</SelectItem>
+                  <SelectItem value="BLOCKED">Bloqueado</SelectItem>
                 </SelectContent>
               </Select>
             </div>

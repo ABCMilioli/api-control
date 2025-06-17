@@ -1,4 +1,3 @@
-
 export interface APIKey {
   id: string;
   key: string;
@@ -30,7 +29,7 @@ export interface Client {
   company?: string;
   phone?: string;
   notes?: string;
-  status: 'active' | 'suspended' | 'blocked';
+  status: 'ACTIVE' | 'SUSPENDED' | 'BLOCKED';
   createdAt: Date;
 }
 
@@ -38,7 +37,7 @@ export interface User {
   id: string;
   email: string;
   nome: string;
-  role: 'admin' | 'user';
+  role: 'ADMIN' | 'USER';
   ativo: boolean;
   dataCriacao: Date;
   dataAtualizacao: Date;
@@ -50,3 +49,5 @@ export interface DashboardMetrics {
   activeClients: number;
   successRate: number;
 }
+
+export type ClientStatus = 'ACTIVE' | 'SUSPENDED' | 'BLOCKED';

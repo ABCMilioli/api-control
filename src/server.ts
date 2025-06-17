@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
 import { userRouter } from './routes/user.js';
+import { clientRouter } from './routes/client.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -36,6 +37,13 @@ app.use(express.static(staticPath, {
   extensions: ['html', 'js', 'css', 'json', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico']
 }));
 
+// Middleware para parsing de JSON
+app.use(express.json());
+
+// Rotas da API
+app.use('/api/users', userRouter);
+app.use('/api/clients', clientRouter);
+
 // Rota de health check
 const healthCheck: RequestHandler = (req: Request, res: Response) => {
   res.status(200).json({ 
@@ -60,13 +68,6 @@ const serveIndex: RequestHandler = (req: Request, res: Response): void => {
     return;
   }
 
-  // Verificar se é uma rota de API
-  if (req.path.startsWith('/api/')) {
-    console.log('Rota de API não encontrada:', req.path);
-    res.status(404).json({ error: 'Rota não encontrada' });
-    return;
-  }
-
   res.sendFile(indexPath, (err: Error | null) => {
     if (err) {
       console.error('Erro ao servir index.html:', err);
@@ -78,12 +79,6 @@ const serveIndex: RequestHandler = (req: Request, res: Response): void => {
 };
 
 app.get('*', serveIndex);
-
-// Middleware para parsing de JSON
-app.use(express.json());
-
-// Rotas da API
-app.use('/api/users', userRouter);
 
 // Tratamento de erros
 const errorHandler: ErrorRequestHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {

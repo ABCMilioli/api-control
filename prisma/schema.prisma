@@ -214,7 +214,7 @@ enum ClientStatus {
   SUSPENDED
   BLOCKED
 
-  @@map("client_status")
+  @@map("ClientStatus")
 }
 
 enum PaymentStatus {
