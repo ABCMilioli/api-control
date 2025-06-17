@@ -229,24 +229,35 @@ const apiExamples = [
   },
   {
     title: 'Validar Instalação',
-    description: 'Verificar se uma instalação é válida',
+    description: 'Verificar se uma instalação é válida e registrar tentativa',
     method: 'POST',
     endpoint: '/api/validate',
-    curl: `curl -X POST https://api.control.com/validate \\
-  -H "Content-Type: application/json" \\
+    curl: `curl -X POST https://api-control.iacas.top/api/validate \
+  -H "Content-Type: application/json" \
   -d '{
-    "apiKey": "sk_live_xyz789...",
+    "apiKey": "SUA_CHAVE_API_AQUI",
     "ipAddress": "192.168.1.100",
-    "userAgent": "MyApp/1.0"
+    "userAgent": "MeuApp/1.0"
   }'`,
     response: `{
   "success": true,
   "valid": true,
   "data": {
     "clientName": "Empresa XYZ",
-    "remainingInstallations": 4,
-    "installationId": "inst-456"
+    "installationId": "inst-456",
+    "replacedInstallationId": "inst-123" // se houve substituição
   }
+}`
+  },
+  {
+    title: 'Verificar Status da Instalação',
+    description: 'Consulta se uma instalação está ativa ou foi revogada',
+    method: 'GET',
+    endpoint: '/api/installations/status/:installationId',
+    curl: `curl -X GET https://api-control.iacas.top/api/installations/status/inst-456`,
+    response: `{
+  "active": true,
+  "message": "Instalação ativa"
 }`
   },
   {
