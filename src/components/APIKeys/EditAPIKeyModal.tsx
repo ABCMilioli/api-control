@@ -52,21 +52,21 @@ export function EditAPIKeyModal({ open, onClose, apiKey }: EditAPIKeyModalProps)
     if (!apiKey) return;
 
     try {
-      const updates = {
-        maxInstallations: parseInt(formData.maxInstallations),
-        expiresAt: formData.expiresAt ? new Date(formData.expiresAt) : null,
-        isActive: formData.isActive
-      };
+    const updates = {
+      maxInstallations: parseInt(formData.maxInstallations),
+      expiresAt: formData.expiresAt ? new Date(formData.expiresAt) : null,
+      isActive: formData.isActive
+    };
 
       await updateAPIKey(apiKey.id, updates);
-      
-      toast({
-        title: "Sucesso",
-        description: "API Key atualizada com sucesso",
-        variant: "default"
-      });
+    
+    toast({
+      title: "Sucesso",
+      description: "API Key atualizada com sucesso",
+      variant: "default"
+    });
 
-      onClose();
+    onClose();
     } catch (error) {
       toast({
         title: "Erro",
@@ -137,7 +137,7 @@ export function EditAPIKeyModal({ open, onClose, apiKey }: EditAPIKeyModalProps)
                 variant="outline"
                 size="sm"
                 onClick={() => setFormData(prev => ({ ...prev, isActive: !prev.isActive }))}
-              >
+            >
                 {formData.isActive ? 'Desativar' : 'Ativar'}
               </Button>
             </div>

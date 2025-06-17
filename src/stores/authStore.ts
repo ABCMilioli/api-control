@@ -46,7 +46,7 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const user = await response.json();
-          set({ user, isAuthenticated: true });
+            set({ user, isAuthenticated: true });
           return true;
         } catch (error) {
           return false;

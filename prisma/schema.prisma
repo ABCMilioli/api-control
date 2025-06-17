@@ -20,6 +20,8 @@ model User {
   dataCriacao     DateTime @default(now())
   dataAtualizacao DateTime @updatedAt
 
+  notifications   Notification[] // Relação com notificações
+
   @@map("users")
 }
 
@@ -201,6 +203,19 @@ model CheckoutConfig {
   @@map("checkout_configs")
 }
 
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      NotificationType
+  read      Boolean  @default(false)
+  timestamp DateTime @default(now())
+  userId    String?  // Opcional: se quiser notificação por usuário
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
 // Enums
 enum Role {
   ADMIN
@@ -240,4 +255,11 @@ enum ProductType {
   SUBSCRIPTION
 
   @@map("product_type")
+}
+
+enum NotificationType {
+  info
+  warning
+  success
+  error
 }
