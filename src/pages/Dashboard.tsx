@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { Key, User, CheckCircle, Activity } from 'lucide-react';
 import { Header } from '../components/Layout/Header';
@@ -9,51 +8,26 @@ import { useClientStore } from '../stores/clientStore';
 import { useInstallationStore } from '../stores/installationStore';
 
 export default function Dashboard() {
-  console.log('Dashboard component rendering...');
-  
-  const { apiKeys, initializeMockData: initAPIKeys } = useAPIKeyStore();
-  const { clients, initializeMockData: initClients } = useClientStore();
-  const { installations, initializeMockData: initInstallations } = useInstallationStore();
-
-  console.log('Dashboard data:', { 
-    apiKeysCount: apiKeys.length, 
-    clientsCount: clients.length, 
-    installationsCount: installations.length 
-  });
+  const { apiKeys, fetchAPIKeys } = useAPIKeyStore();
+  const { clients, fetchClients } = useClientStore();
+  const { installations, fetchInstallations } = useInstallationStore();
 
   useEffect(() => {
-    console.log('Dashboard useEffect running...');
-    
-    try {
-      if (apiKeys.length === 0) {
-        console.log('Initializing API keys...');
-        initAPIKeys();
-      }
-      if (clients.length === 0) {
-        console.log('Initializing clients...');
-        initClients();
-      }
-      if (installations.length === 0) {
-        console.log('Initializing installations...');
-        initInstallations();
-      }
-    } catch (error) {
-      console.error('Error initializing dashboard data:', error);
-    }
-  }, [apiKeys.length, clients.length, installations.length, initAPIKeys, initClients, initInstallations]);
+    fetchAPIKeys();
+    fetchClients();
+    fetchInstallations();
+  }, [fetchAPIKeys, fetchClients, fetchInstallations]);
 
   // Calcular métricas
   const activeKeys = apiKeys.filter(key => key.isActive).length;
   const today = new Date().toDateString();
   const installationsToday = installations.filter(
-    inst => inst.timestamp.toDateString() === today && inst.success
+    inst => new Date(inst.timestamp).toDateString() === today && inst.success
   ).length;
-  const activeClients = clients.filter(client => client.status === 'active').length;
+  const activeClients = clients.filter(client => client.status === 'active' || client.status === 'ACTIVE').length;
   const successRate = installations.length > 0 
     ? Math.round((installations.filter(inst => inst.success).length / installations.length) * 100)
     : 0;
-
-  console.log('Dashboard metrics:', { activeKeys, installationsToday, activeClients, successRate });
 
   // Dados para o gráfico dos últimos 30 dias
   const chartData = [];
@@ -61,11 +35,9 @@ export default function Dashboard() {
     const date = new Date();
     date.setDate(date.getDate() - i);
     const dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-    
     const dayInstallations = installations.filter(inst => 
-      inst.timestamp.toDateString() === date.toDateString() && inst.success
+      new Date(inst.timestamp).toDateString() === date.toDateString() && inst.success
     ).length;
-    
     chartData.push({
       date: dateStr,
       installations: dayInstallations
@@ -121,8 +93,7 @@ export default function Dashboard() {
           <div className="lg:col-span-2">
             <InstallationChart data={chartData} />
           </div>
-          
-          {/* Alertas */}
+          {/* Alertas (mantidos estáticos por enquanto) */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold mb-4">Alertas Recentes</h3>
             <div className="space-y-4">
@@ -133,7 +104,6 @@ export default function Dashboard() {
                   <p className="text-xs text-gray-600">Digital Dynamics atingiu o limite de instalações</p>
                 </div>
               </div>
-              
               <div className="flex items-start gap-3 p-3 bg-destructive/10 rounded-lg">
                 <div className="w-2 h-2 bg-destructive rounded-full mt-2"></div>
                 <div>
@@ -141,7 +111,6 @@ export default function Dashboard() {
                   <p className="text-xs text-gray-600">3 tentativas com chave inválida nas últimas 24h</p>
                 </div>
               </div>
-              
               <div className="flex items-start gap-3 p-3 bg-primary/10 rounded-lg">
                 <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
                 <div>
