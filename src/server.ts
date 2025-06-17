@@ -5,6 +5,8 @@ import fs from 'fs';
 import { userRouter } from './routes/user.js';
 import { clientRouter } from './routes/client.js';
 import { apiKeyRouter } from './routes/apiKey.js';
+import { validateRouter } from './routes/validate.js';
+import { installationRouter } from './routes/installation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,6 +47,8 @@ app.use(express.json());
 app.use('/api/users', userRouter);
 app.use('/api/clients', clientRouter);
 app.use('/api/api-keys', apiKeyRouter);
+app.use('/api/validate', validateRouter);
+app.use('/api/installations', installationRouter);
 
 // Rota de health check
 const healthCheck: RequestHandler = (req: Request, res: Response) => {

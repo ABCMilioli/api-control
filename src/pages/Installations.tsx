@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, MapPin } from 'lucide-react';
 import { Header } from '../components/Layout/Header';
 import { Badge } from '../components/ui/badge';
@@ -10,10 +9,15 @@ import { useInstallationStore } from '../stores/installationStore';
 import { useAPIKeyStore } from '../stores/apiKeyStore';
 
 export default function Installations() {
-  const { installations } = useInstallationStore();
-  const { apiKeys } = useAPIKeyStore();
+  const { installations, fetchInstallations, loading, error } = useInstallationStore();
+  const { apiKeys, fetchAPIKeys } = useAPIKeyStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  useEffect(() => {
+    fetchInstallations();
+    fetchAPIKeys();
+  }, [fetchInstallations, fetchAPIKeys]);
 
   const filteredInstallations = installations.filter(installation => {
     const apiKey = apiKeys.find(key => key.id === installation.apiKeyId);
@@ -47,6 +51,38 @@ export default function Installations() {
       <Badge variant="destructive">Falha</Badge>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="flex-1 bg-gray-50">
+        <Header 
+          title="Instalações" 
+          subtitle="Monitore tentativas de validação e instalações"
+        />
+        <div className="p-6">
+          <div className="text-center py-8">
+            Carregando instalações...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 bg-gray-50">
+        <Header 
+          title="Instalações" 
+          subtitle="Monitore tentativas de validação e instalações"
+        />
+        <div className="p-6">
+          <div className="text-center py-8 text-destructive">
+            Erro ao carregar instalações: {error}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 bg-gray-50">
@@ -122,7 +158,7 @@ export default function Installations() {
                           <div className="flex items-center gap-1">
                             <Clock size={14} />
                             <span>
-                              {installation.timestamp.toLocaleString('pt-BR')}
+                              {new Date(installation.timestamp).toLocaleString('pt-BR')}
                             </span>
                           </div>
                         </div>
