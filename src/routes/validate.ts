@@ -32,7 +32,6 @@ const validateAPIKey: RequestHandler = async (req: Request, res: Response): Prom
     // Se a chave não existe ou está inativa
     if (!apiKeyData) {
       logger.warn('API Key inválida ou inativa', { apiKey });
-      // Registrar tentativa falha
       await prisma.installation.create({
         data: {
           apiKeyId: 'invalid',
@@ -75,42 +74,25 @@ const validateAPIKey: RequestHandler = async (req: Request, res: Response): Prom
       return;
     }
 
-    // Verificar limite de instalações
-    if (apiKeyData.currentInstallations >= apiKeyData.maxInstallations) {
-      logger.warn('Limite de instalações excedido', { 
-        apiKeyId: apiKeyData.id,
-        current: apiKeyData.currentInstallations,
-        max: apiKeyData.maxInstallations
-      });
-      await prisma.installation.create({
-        data: {
-          apiKeyId: apiKeyData.id,
-          ipAddress,
-          userAgent,
-          location: geoip.lookup(ipAddress)?.city,
-          success: false
-        }
-      });
-      res.status(403).json({
-        success: false,
-        error: 'INSTALLATION_LIMIT_EXCEEDED',
-        description: 'Limite de instalações excedido para esta chave.',
-        code: 403
-      });
-      return;
-    }
-
-    // Atualizar contagem de instalações e último uso
-    await prisma.aPIKey.update({
-      where: { id: apiKeyData.id },
-      data: {
-        currentInstallations: apiKeyData.currentInstallations + 1,
-        lastUsed: new Date()
-      }
+    // Buscar instalações ativas
+    const activeInstallations = await prisma.installation.findMany({
+      where: { apiKeyId: apiKeyData.id, success: true },
+      orderBy: { timestamp: 'asc' }
     });
 
-    // Registrar instalação bem-sucedida
-    const installation = await prisma.installation.create({
+    let replacedInstallationId: string | null = null;
+    // Se já atingiu o limite, derruba a mais antiga
+    if (activeInstallations.length >= apiKeyData.maxInstallations) {
+      const toRemove = activeInstallations[0];
+      await prisma.installation.update({
+        where: { id: toRemove.id },
+        data: { success: false }
+      });
+      replacedInstallationId = toRemove.id;
+    }
+
+    // Registrar a nova instalação
+    const newInstallation = await prisma.installation.create({
       data: {
         apiKeyId: apiKeyData.id,
         ipAddress,
@@ -120,9 +102,21 @@ const validateAPIKey: RequestHandler = async (req: Request, res: Response): Prom
       }
     });
 
+    // Atualizar currentInstallations na APIKey
+    await prisma.aPIKey.update({
+      where: { id: apiKeyData.id },
+      data: {
+        currentInstallations: await prisma.installation.count({
+          where: { apiKeyId: apiKeyData.id, success: true }
+        }),
+        lastUsed: new Date()
+      }
+    });
+
     logger.info('Validação bem-sucedida', { 
       apiKeyId: apiKeyData.id,
-      installationId: installation.id
+      installationId: newInstallation.id,
+      replacedInstallationId
     });
 
     res.json({
@@ -130,8 +124,8 @@ const validateAPIKey: RequestHandler = async (req: Request, res: Response): Prom
       valid: true,
       data: {
         clientName: apiKeyData.clientName,
-        remainingInstallations: apiKeyData.maxInstallations - (apiKeyData.currentInstallations + 1),
-        installationId: installation.id
+        installationId: newInstallation.id,
+        replacedInstallationId
       }
     });
   } catch (error) {
