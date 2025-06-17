@@ -31,6 +31,24 @@ const listInstallations: RequestHandler = async (req: Request, res: Response): P
   }
 };
 
+// Nova rota para verificar status de uma instalação
+router.get('/status/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const installation = await prisma.installation.findUnique({ where: { id } });
+    if (!installation) {
+      res.status(404).json({ active: false, message: 'Instalação não encontrada' });
+      return;
+    }
+    res.json({ active: installation.success, message: installation.success ? 'Instalação ativa' : 'Instalação revogada' });
+    return;
+  } catch (error) {
+    logger.error('Erro ao verificar status da instalação', { error });
+    res.status(500).json({ active: false, message: 'Erro ao verificar status da instalação' });
+    return;
+  }
+});
+
 router.get('/', listInstallations);
 
 export { router as installationRouter }; 
