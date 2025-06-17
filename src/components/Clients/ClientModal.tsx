@@ -26,6 +26,7 @@ export function ClientModal({ open, onClose, client }: ClientModalProps) {
     notes: '',
     status: 'ACTIVE'
   });
+  const [formError, setFormError] = useState<string | null>(null);
 
   const isEditing = !!client;
   const isLoading = createClientMutation.isPending || updateClientMutation.isPending;
@@ -50,20 +51,21 @@ export function ClientModal({ open, onClose, client }: ClientModalProps) {
         status: 'ACTIVE'
       });
     }
+    setFormError(null);
   }, [client, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name || !formData.email) {
+    if (!formData.name.trim() || !formData.email.trim()) {
+      setFormError('Nome e email são obrigatórios.');
       return;
     }
-
+    setFormError(null);
     try {
       if (isEditing && client) {
         await updateClientMutation.mutateAsync({
           id: client.id,
-          data: formData
+          ...formData
         });
       } else {
         await createClientMutation.mutateAsync(formData);
@@ -173,6 +175,10 @@ export function ClientModal({ open, onClose, client }: ClientModalProps) {
               />
             </div>
           </div>
+          
+          {formError && (
+            <div className="text-red-600 text-sm text-center">{formError}</div>
+          )}
           
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>

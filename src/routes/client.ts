@@ -108,6 +108,7 @@ const createClient: RequestHandler = async (req: Request, res: Response) => {
 // Atualizar cliente
 const updateClient: RequestHandler = async (req: Request, res: Response) => {
   try {
+    console.log('Body recebido para update:', req.body);
     const { id } = req.params;
     const { name, email, company, phone, notes, status } = req.body as Partial<Omit<Client, 'id' | 'createdAt'>>;
 

@@ -23,12 +23,12 @@ export default function Clients() {
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      active: { variant: "default" as const, label: "Ativo" },
-      suspended: { variant: "secondary" as const, label: "Suspenso" },
-      blocked: { variant: "destructive" as const, label: "Bloqueado" }
+      ACTIVE: { variant: "default" as const, label: "Ativo" },
+      SUSPENDED: { variant: "secondary" as const, label: "Suspenso" },
+      BLOCKED: { variant: "destructive" as const, label: "Bloqueado" }
     };
     
-    return variants[status as keyof typeof variants] || variants.active;
+    return variants[status as keyof typeof variants] || variants.ACTIVE;
   };
 
   const handleNewClient = () => {
@@ -102,7 +102,7 @@ export default function Clients() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {clients && clients.length > 0 ? (
-              clients.map((client) => {
+              clients.map((client: Client) => {
                 const statusInfo = getStatusBadge(client.status);
                 
                 return (

@@ -2,7 +2,7 @@
 CREATE TYPE "role" AS ENUM ('ADMIN', 'USER');
 
 -- CreateEnum
-CREATE TYPE "ClientStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'BLOCKED');
+CREATE TYPE "ClientStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'BLOCKED');
 
 -- CreateEnum
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PAID', 'FAILED', 'REFUNDED', 'CANCELED');
