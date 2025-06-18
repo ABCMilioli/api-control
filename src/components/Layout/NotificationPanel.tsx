@@ -55,11 +55,7 @@ export function NotificationPanel() {
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch('/api/notifications', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const response = await fetch('/api/notifications');
       
       if (!response.ok) {
         throw new Error('Erro ao buscar notificações');
@@ -77,10 +73,7 @@ export function NotificationPanel() {
   const markAsRead = async (id: string) => {
     try {
       const response = await fetch(`/api/notifications/${id}/read`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+        method: 'PATCH'
       });
 
       if (!response.ok) {
@@ -102,10 +95,7 @@ export function NotificationPanel() {
   const markAllAsRead = async () => {
     try {
       const response = await fetch('/api/notifications/read-all', {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+        method: 'PATCH'
       });
 
       if (!response.ok) {
@@ -123,10 +113,7 @@ export function NotificationPanel() {
   const removeNotification = async (id: string) => {
     try {
       const response = await fetch(`/api/notifications/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+        method: 'DELETE'
       });
 
       if (!response.ok) {

@@ -23,11 +23,6 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
       return next();
     }
 
-    // Se for uma requisição para a rota de notificações, permite passar
-    if (req.path.startsWith('/api/notifications')) {
-      return next();
-    }
-
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {

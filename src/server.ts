@@ -7,7 +7,7 @@ import { clientRouter } from './routes/client.js';
 import { apiKeyRouter } from './routes/apiKey.js';
 import { validateRouter } from './routes/validate.js';
 import { installationRouter } from './routes/installation.js';
-import notificationRouter from './routes/notificationRoutes.js';
+import { notificationRouter } from './routes/notificationRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -113,4 +113,4 @@ app.listen(port, () => {
   console.log(`Diretório atual: ${__dirname}`);
   console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
   console.log(`URL base: http://localhost:${port}`);
-}); 
+});
