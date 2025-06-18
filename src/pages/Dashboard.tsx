@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Key, User, CheckCircle, Activity } from 'lucide-react';
 import { Header } from '../components/Layout/Header';
 import { MetricCard } from '../components/Dashboard/MetricCard';
@@ -12,10 +12,33 @@ export default function Dashboard() {
   const { clients, fetchClients } = useClientStore();
   const { installations, fetchInstallations } = useInstallationStore();
 
+  // Estado para alertas recentes
+  const [recentAlerts, setRecentAlerts] = useState<any[]>([]);
+  const [loadingAlerts, setLoadingAlerts] = useState(true);
+
   useEffect(() => {
     fetchAPIKeys();
     fetchClients();
     fetchInstallations();
+
+    // Buscar alertas recentes do backend
+    const fetchRecentAlerts = async () => {
+      setLoadingAlerts(true);
+      try {
+        const res = await fetch('/api/notifications/recent');
+        if (res.ok) {
+          const data = await res.json();
+          setRecentAlerts(data);
+        } else {
+          setRecentAlerts([]);
+        }
+      } catch (err) {
+        setRecentAlerts([]);
+      } finally {
+        setLoadingAlerts(false);
+      }
+    };
+    fetchRecentAlerts();
   }, [fetchAPIKeys, fetchClients, fetchInstallations]);
 
   // Calcular métricas
@@ -93,31 +116,33 @@ export default function Dashboard() {
           <div className="lg:col-span-2">
             <InstallationChart data={chartData} />
           </div>
-          {/* Alertas (mantidos estáticos por enquanto) */}
+          {/* Alertas Recentes dinâmicos */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold mb-4">Alertas Recentes</h3>
             <div className="space-y-4">
-              <div className="flex items-start gap-3 p-3 bg-warning/10 rounded-lg">
-                <div className="w-2 h-2 bg-warning rounded-full mt-2"></div>
-                <div>
-                  <p className="text-sm font-medium">Limite Atingido</p>
-                  <p className="text-xs text-gray-600">Digital Dynamics atingiu o limite de instalações</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 p-3 bg-destructive/10 rounded-lg">
-                <div className="w-2 h-2 bg-destructive rounded-full mt-2"></div>
-                <div>
-                  <p className="text-sm font-medium">Tentativa Negada</p>
-                  <p className="text-xs text-gray-600">3 tentativas com chave inválida nas últimas 24h</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 p-3 bg-primary/10 rounded-lg">
-                <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
-                <div>
-                  <p className="text-sm font-medium">Expiração Próxima</p>
-                  <p className="text-xs text-gray-600">2 chaves expiram nos próximos 7 dias</p>
-                </div>
-              </div>
+              {loadingAlerts ? (
+                <div className="text-gray-500 text-sm">Carregando alertas...</div>
+              ) : recentAlerts.length === 0 ? (
+                <div className="text-gray-500 text-sm">Nenhum alerta recente.</div>
+              ) : (
+                recentAlerts.map((alert, idx) => {
+                  let bg = 'bg-primary/10';
+                  let dot = 'bg-primary';
+                  if (alert.type === 'warning') { bg = 'bg-warning/10'; dot = 'bg-warning'; }
+                  if (alert.type === 'error') { bg = 'bg-destructive/10'; dot = 'bg-destructive'; }
+                  if (alert.type === 'info') { bg = 'bg-primary/10'; dot = 'bg-primary'; }
+                  if (alert.type === 'success') { bg = 'bg-success/10'; dot = 'bg-success'; }
+                  return (
+                    <div key={alert.id || idx} className={`flex items-start gap-3 p-3 rounded-lg ${bg}`}>
+                      <div className={`w-2 h-2 rounded-full mt-2 ${dot}`}></div>
+                      <div>
+                        <p className="text-sm font-medium">{alert.title}</p>
+                        <p className="text-xs text-gray-600">{alert.message}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

@@ -90,4 +90,14 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// Rota para alertas recentes
+router.get('/recent', async (req, res) => {
+  try {
+    const recentNotifications = await notificationService.getRecentNotifications(3);
+    res.json(recentNotifications);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar alertas recentes' });
+  }
+});
+
 export { router as notificationRouter }; 

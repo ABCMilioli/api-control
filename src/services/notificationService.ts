@@ -10,6 +10,13 @@ export interface CreateNotificationData {
   userId?: string;
 }
 
+async function getRecentNotifications(limit: number = 3) {
+  return prisma.notification.findMany({
+    orderBy: { timestamp: 'desc' },
+    take: limit
+  });
+}
+
 export const notificationService = {
   async createNotification(data: CreateNotificationData) {
     try {
@@ -192,4 +199,6 @@ export const notificationService = {
       throw error;
     }
   },
+
+  getRecentNotifications,
 }; 
