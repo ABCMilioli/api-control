@@ -1,22 +1,34 @@
 import { useState } from 'react';
-import { Plus, Building, Mail, Phone, Edit2, Loader2 } from 'lucide-react';
+import { Plus, Building, Mail, Phone, Edit2, Loader2, Trash2 } from 'lucide-react';
 import { Header } from '../components/Layout/Header';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { ClientModal } from '../components/Clients/ClientModal';
-import { useClients, useSearchClients } from '../hooks/useClients';
+import { useClients, useSearchClients, useDeleteClient } from '../hooks/useClients';
 import { Client } from '../types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../components/ui/alert-dialog';
 
 export default function Clients() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
 
   // Use different queries based on whether we're searching or not
   const { data: allClients, isLoading: isLoadingAll, error: errorAll } = useClients();
   const { data: searchResults, isLoading: isSearching } = useSearchClients(searchTerm);
+  const deleteClientMutation = useDeleteClient();
 
   const clients = searchTerm ? searchResults : allClients;
   const isLoading = searchTerm ? isSearching : isLoadingAll;
@@ -39,6 +51,17 @@ export default function Clients() {
   const handleEditClient = (client: Client) => {
     setEditingClient(client);
     setIsModalOpen(true);
+  };
+
+  const handleDeleteClient = async (client: Client) => {
+    setClientToDelete(client);
+  };
+
+  const confirmDelete = async () => {
+    if (clientToDelete) {
+      await deleteClientMutation.mutateAsync(clientToDelete.id);
+      setClientToDelete(null);
+    }
   };
 
   const handleCloseModal = () => {
@@ -122,11 +145,19 @@ export default function Clients() {
                           >
                             <Edit2 size={14} />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteClient(client)}
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 size={14} />
+                          </Button>
                         </div>
                       </div>
                     </CardHeader>
                     
-                    <CardContent className="space-y-3">
+                    <CardContent>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Mail size={16} />
                         <span>{client.email}</span>
@@ -177,6 +208,26 @@ export default function Clients() {
         onClose={handleCloseModal}
         client={editingClient}
       />
+
+      <AlertDialog open={!!clientToDelete} onOpenChange={() => setClientToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o cliente {clientToDelete?.name}? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
