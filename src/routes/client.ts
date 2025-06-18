@@ -1,6 +1,8 @@
 import { Router, Request, Response, RequestHandler } from 'express';
 import { prisma } from '../lib/database.js';
 import { Client } from '../types/index.js';
+import { notificationService } from '../services/notificationService.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 
@@ -42,6 +44,10 @@ const listClients: RequestHandler = async (req: Request, res: Response) => {
     });
     res.json(clients.map(normalizeClient));
   } catch (error) {
+    logger.error('Erro ao buscar clientes', {
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Erro ao buscar clientes' });
   }
 };
@@ -64,6 +70,11 @@ const getClient: RequestHandler = async (req: Request, res: Response) => {
 
     res.json(normalizeClient(client));
   } catch (error) {
+    logger.error('Erro ao buscar cliente', {
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : undefined,
+      clientId: req.params.id
+    });
     res.status(500).json({ error: 'Erro ao buscar cliente' });
   }
 };
@@ -98,17 +109,34 @@ const createClient: RequestHandler = async (req: Request, res: Response) => {
       }
     });
 
+    // Criar notificação para o novo cliente
+    try {
+      await notificationService.createNotification({
+        title: 'Novo Cliente Cadastrado',
+        message: `${name} foi cadastrado no sistema${company ? ` (${company})` : ''}`,
+        type: 'success'
+      });
+      logger.info('Notificação criada com sucesso para novo cliente');
+    } catch (notificationError) {
+      logger.error('Erro ao criar notificação para novo cliente', {
+        error: notificationError instanceof Error ? notificationError.message : 'Erro desconhecido',
+        stack: notificationError instanceof Error ? notificationError.stack : undefined
+      });
+    }
+
     res.status(201).json(normalizeClient(client));
   } catch (error) {
-    console.error('Erro ao criar cliente:', error);
-    res.status(500).json({ error: 'Erro ao criar cliente', details: error instanceof Error ? error.message : error });
+    logger.error('Erro ao criar cliente', {
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    res.status(500).json({ error: 'Erro ao criar cliente' });
   }
 };
 
 // Atualizar cliente
 const updateClient: RequestHandler = async (req: Request, res: Response) => {
   try {
-    console.log('Body recebido para update:', req.body);
     const { id } = req.params;
     const { name, email, company, phone, notes, status } = req.body as Partial<Omit<Client, 'id' | 'createdAt'>>;
 
@@ -150,8 +178,37 @@ const updateClient: RequestHandler = async (req: Request, res: Response) => {
       }
     });
 
+    // Criar notificação para atualização do cliente
+    try {
+      await notificationService.createNotification({
+        title: 'Cliente Atualizado',
+        message: `${name} foi atualizado no sistema${company ? ` (${company})` : ''}`,
+        type: 'info'
+      });
+
+      // Se o status foi alterado, criar notificação específica
+      if (status && status !== existingClient.status) {
+        await notificationService.createNotification({
+          title: 'Status do Cliente Alterado',
+          message: `O status de ${name} foi alterado para ${status}`,
+          type: 'warning'
+        });
+      }
+      logger.info('Notificações criadas com sucesso para atualização de cliente');
+    } catch (notificationError) {
+      logger.error('Erro ao criar notificações para atualização de cliente', {
+        error: notificationError instanceof Error ? notificationError.message : 'Erro desconhecido',
+        stack: notificationError instanceof Error ? notificationError.stack : undefined
+      });
+    }
+
     res.json(normalizeClient(client));
   } catch (error) {
+    logger.error('Erro ao atualizar cliente', {
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : undefined,
+      clientId: req.params.id
+    });
     res.status(500).json({ error: 'Erro ao atualizar cliente' });
   }
 };
@@ -174,8 +231,28 @@ const deleteClient: RequestHandler = async (req: Request, res: Response) => {
       where: { id }
     });
 
+    // Criar notificação para exclusão do cliente
+    try {
+      await notificationService.createNotification({
+        title: 'Cliente Removido',
+        message: `${existingClient.name} foi removido do sistema${existingClient.company ? ` (${existingClient.company})` : ''}`,
+        type: 'error'
+      });
+      logger.info('Notificação criada com sucesso para exclusão de cliente');
+    } catch (notificationError) {
+      logger.error('Erro ao criar notificação para exclusão de cliente', {
+        error: notificationError instanceof Error ? notificationError.message : 'Erro desconhecido',
+        stack: notificationError instanceof Error ? notificationError.stack : undefined
+      });
+    }
+
     res.status(204).send();
   } catch (error) {
+    logger.error('Erro ao deletar cliente', {
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : undefined,
+      clientId: req.params.id
+    });
     res.status(500).json({ error: 'Erro ao deletar cliente' });
   }
 };
@@ -195,16 +272,20 @@ const getClientStatusCounts: RequestHandler = async (req: Request, res: Response
 
     res.json(formattedCounts);
   } catch (error) {
+    logger.error('Erro ao buscar contagem de status', {
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Erro ao buscar contagem de status' });
   }
 };
 
 // Registrar rotas
 router.get('/', listClients);
-router.get('/status-counts', getClientStatusCounts);
 router.get('/:id', getClient);
 router.post('/', createClient);
 router.put('/:id', updateClient);
 router.delete('/:id', deleteClient);
+router.get('/status-counts', getClientStatusCounts);
 
 export { router as clientRouter }; 

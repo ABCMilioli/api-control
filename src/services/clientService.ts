@@ -1,6 +1,7 @@
 import { prisma } from '../lib/database.js';
 import { Client } from '../types/index.js';
 import { notificationService } from './notificationService.js';
+import { logger } from '../lib/logger.js';
 
 function normalizeClient(client: any): Client {
   return {
@@ -48,9 +49,12 @@ export const clientService = {
   },
 
   async createClient(data: Omit<Client, 'id' | 'createdAt'>): Promise<Client> {
+    logger.info('Iniciando criação de cliente', { data });
+    
     const { name, email, company, phone, notes, status } = data;
 
     if (!name || !email) {
+      logger.error('Campos obrigatórios faltando', { name, email });
       throw new Error('Nome e email são obrigatórios');
     }
 
@@ -59,6 +63,7 @@ export const clientService = {
     });
 
     if (existingClient) {
+      logger.error('Email já cadastrado', { email });
       throw new Error('Email já cadastrado');
     }
 
@@ -73,20 +78,33 @@ export const clientService = {
       }
     });
 
-    // Criar notificação para o novo cliente
-    await notificationService.createNotification({
-      title: 'Novo Cliente Cadastrado',
-      message: `${name} foi cadastrado no sistema${company ? ` (${company})` : ''}`,
-      type: 'success'
-    });
+    logger.info('Cliente criado com sucesso', { clientId: client.id });
+
+    try {
+      // Criar notificação para o novo cliente
+      await notificationService.createNotification({
+        title: 'Novo Cliente Cadastrado',
+        message: `${name} foi cadastrado no sistema${company ? ` (${company})` : ''}`,
+        type: 'success'
+      });
+      logger.info('Notificação criada com sucesso para novo cliente');
+    } catch (error) {
+      logger.error('Erro ao criar notificação para novo cliente', { 
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+    }
 
     return normalizeClient(client);
   },
 
   async updateClient(id: string, data: Partial<Omit<Client, 'id' | 'createdAt'>>): Promise<Client> {
+    logger.info('Iniciando atualização de cliente', { id, data });
+    
     const { name, email, company, phone, notes, status } = data;
 
     if (!name || !email) {
+      logger.error('Campos obrigatórios faltando', { name, email });
       throw new Error('Nome e email são obrigatórios');
     }
 
@@ -95,6 +113,7 @@ export const clientService = {
     });
 
     if (!existingClient) {
+      logger.error('Cliente não encontrado', { id });
       throw new Error('Cliente não encontrado');
     }
 
@@ -106,6 +125,7 @@ export const clientService = {
     });
 
     if (emailExists) {
+      logger.error('Email já cadastrado para outro cliente', { email });
       throw new Error('Email já cadastrado para outro cliente');
     }
 
@@ -120,21 +140,69 @@ export const clientService = {
         status
       }
     });
+
+    logger.info('Cliente atualizado com sucesso', { clientId: client.id });
+
+    try {
+      // Criar notificação para atualização do cliente
+      await notificationService.createNotification({
+        title: 'Cliente Atualizado',
+        message: `${name} foi atualizado no sistema${company ? ` (${company})` : ''}`,
+        type: 'info'
+      });
+      logger.info('Notificação criada com sucesso para atualização de cliente');
+
+      // Se o status foi alterado, criar notificação específica
+      if (status && status !== existingClient.status) {
+        await notificationService.createNotification({
+          title: 'Status do Cliente Alterado',
+          message: `O status de ${name} foi alterado para ${status}`,
+          type: 'warning'
+        });
+        logger.info('Notificação criada com sucesso para alteração de status');
+      }
+    } catch (error) {
+      logger.error('Erro ao criar notificação para atualização de cliente', { 
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+    }
+
     return normalizeClient(client);
   },
 
   async deleteClient(id: string): Promise<void> {
+    logger.info('Iniciando exclusão de cliente', { id });
+
     const existingClient = await prisma.client.findUnique({
       where: { id }
     });
 
     if (!existingClient) {
+      logger.error('Cliente não encontrado', { id });
       throw new Error('Cliente não encontrado');
     }
 
     await prisma.client.delete({
       where: { id }
     });
+
+    logger.info('Cliente excluído com sucesso', { clientId: id });
+
+    try {
+      // Criar notificação para exclusão do cliente
+      await notificationService.createNotification({
+        title: 'Cliente Removido',
+        message: `${existingClient.name} foi removido do sistema${existingClient.company ? ` (${existingClient.company})` : ''}`,
+        type: 'error'
+      });
+      logger.info('Notificação criada com sucesso para exclusão de cliente');
+    } catch (error) {
+      logger.error('Erro ao criar notificação para exclusão de cliente', { 
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+    }
   },
 
   async getClientStatusCounts(): Promise<Record<string, number>> {
