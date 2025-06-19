@@ -3,6 +3,7 @@ import { prisma } from '../lib/database.js';
 import { Client } from '../types/index.js';
 import { notificationService } from '../services/notificationService.js';
 import { logger } from '../lib/logger.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ function normalizeClient(client: any): Client {
 }
 
 // Listar todos os clientes
-const listClients: RequestHandler = async (req: Request, res: Response) => {
+const listClients: RequestHandler = async (req, res) => {
   try {
     const { search } = req.query;
     let where = {};
@@ -43,17 +44,19 @@ const listClients: RequestHandler = async (req: Request, res: Response) => {
       }
     });
     res.json(clients.map(normalizeClient));
+    return;
   } catch (error) {
     logger.error('Erro ao buscar clientes', {
       error: error instanceof Error ? error.message : 'Erro desconhecido',
       stack: error instanceof Error ? error.stack : undefined
     });
     res.status(500).json({ error: 'Erro ao buscar clientes' });
+    return;
   }
 };
 
 // Buscar cliente por ID
-const getClient: RequestHandler = async (req: Request, res: Response) => {
+const getClient: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
     const client = await prisma.client.findUnique({
@@ -69,6 +72,7 @@ const getClient: RequestHandler = async (req: Request, res: Response) => {
     }
 
     res.json(normalizeClient(client));
+    return;
   } catch (error) {
     logger.error('Erro ao buscar cliente', {
       error: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -76,11 +80,12 @@ const getClient: RequestHandler = async (req: Request, res: Response) => {
       clientId: req.params.id
     });
     res.status(500).json({ error: 'Erro ao buscar cliente' });
+    return;
   }
 };
 
 // Criar novo cliente
-const createClient: RequestHandler = async (req: Request, res: Response) => {
+const createClient: RequestHandler = async (req, res) => {
   try {
     const { name, email, company, phone, notes, status } = req.body as Omit<Client, 'id' | 'createdAt'>;
 
@@ -125,17 +130,19 @@ const createClient: RequestHandler = async (req: Request, res: Response) => {
     }
 
     res.status(201).json(normalizeClient(client));
+    return;
   } catch (error) {
     logger.error('Erro ao criar cliente', {
       error: error instanceof Error ? error.message : 'Erro desconhecido',
       stack: error instanceof Error ? error.stack : undefined
     });
     res.status(500).json({ error: 'Erro ao criar cliente' });
+    return;
   }
 };
 
 // Atualizar cliente
-const updateClient: RequestHandler = async (req: Request, res: Response) => {
+const updateClient: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email, company, phone, notes, status } = req.body as Partial<Omit<Client, 'id' | 'createdAt'>>;
@@ -203,6 +210,7 @@ const updateClient: RequestHandler = async (req: Request, res: Response) => {
     }
 
     res.json(normalizeClient(client));
+    return;
   } catch (error) {
     logger.error('Erro ao atualizar cliente', {
       error: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -210,11 +218,12 @@ const updateClient: RequestHandler = async (req: Request, res: Response) => {
       clientId: req.params.id
     });
     res.status(500).json({ error: 'Erro ao atualizar cliente' });
+    return;
   }
 };
 
 // Deletar cliente
-const deleteClient: RequestHandler = async (req: Request, res: Response) => {
+const deleteClient: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -247,6 +256,7 @@ const deleteClient: RequestHandler = async (req: Request, res: Response) => {
     }
 
     res.status(204).send();
+    return;
   } catch (error) {
     logger.error('Erro ao deletar cliente', {
       error: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -254,11 +264,12 @@ const deleteClient: RequestHandler = async (req: Request, res: Response) => {
       clientId: req.params.id
     });
     res.status(500).json({ error: 'Erro ao deletar cliente' });
+    return;
   }
 };
 
 // Contagem de status dos clientes
-const getClientStatusCounts: RequestHandler = async (req: Request, res: Response) => {
+const getClientStatusCounts: RequestHandler = async (req, res) => {
   try {
     const counts = await prisma.client.groupBy({
       by: ['status'],
@@ -271,21 +282,23 @@ const getClientStatusCounts: RequestHandler = async (req: Request, res: Response
     }, {});
 
     res.json(formattedCounts);
+    return;
   } catch (error) {
     logger.error('Erro ao buscar contagem de status', {
       error: error instanceof Error ? error.message : 'Erro desconhecido',
       stack: error instanceof Error ? error.stack : undefined
     });
     res.status(500).json({ error: 'Erro ao buscar contagem de status' });
+    return;
   }
 };
 
-// Registrar rotas
-router.get('/', listClients);
-router.get('/:id', getClient);
-router.post('/', createClient);
-router.put('/:id', updateClient);
-router.delete('/:id', deleteClient);
-router.get('/status-counts', getClientStatusCounts);
+// Registrar rotas protegidas por autenticação JWT
+router.get('/', authMiddleware, listClients);
+router.get('/:id', authMiddleware, getClient);
+router.post('/', authMiddleware, createClient);
+router.put('/:id', authMiddleware, updateClient);
+router.delete('/:id', authMiddleware, deleteClient);
+router.get('/status-counts', authMiddleware, getClientStatusCounts);
 
 export { router as clientRouter }; 

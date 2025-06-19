@@ -3,15 +3,16 @@ import { useToast } from './use-toast.js';
 import { useState, useEffect } from 'react';
 import { toast } from './use-toast.js';
 import { Client } from '../types/index.js';
+import { api } from '../lib/api.js'; // Corrigido para usar extensão .js
 
 // Funções para consumir a API REST
-const API_URL = '/api/clients';
+const API_URL = '/clients';
 
 export const useClients = () => {
   return useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
-      const res = await fetch(API_URL);
+      const res = await api.get(API_URL);
       if (!res.ok) throw new Error('Erro ao buscar clientes');
       return res.json();
     },
@@ -23,7 +24,7 @@ export const useClient = (id: string) => {
   return useQuery({
     queryKey: ['client', id],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/${id}`);
+      const res = await api.get(`${API_URL}/${id}`);
       if (!res.ok) throw new Error('Erro ao buscar cliente');
       return res.json();
     },
@@ -37,13 +38,7 @@ export const useCreateClient = () => {
 
   return useMutation({
     mutationFn: async (newClient: any) => {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newClient),
-      });
+      const res = await api.post(API_URL, newClient);
       if (!res.ok) throw new Error('Erro ao criar cliente');
       const createdClient = await res.json();
       queryClient.invalidateQueries({ queryKey: ['clients'] });
@@ -69,13 +64,7 @@ export const useUpdateClient = () => {
 
   return useMutation({
     mutationFn: async (updatedClient: any) => {
-      const res = await fetch(`${API_URL}/${updatedClient.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedClient),
-      });
+      const res = await api.put(`${API_URL}/${updatedClient.id}`, updatedClient);
       if (!res.ok) throw new Error('Erro ao atualizar cliente');
       const updated = await res.json();
       queryClient.invalidateQueries({ queryKey: ['clients'] });
@@ -102,9 +91,7 @@ export const useDeleteClient = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`${API_URL}/${id}`, {
-        method: 'DELETE',
-      });
+      const res = await api.delete(`${API_URL}/${id}`);
       if (!res.ok) throw new Error('Erro ao remover cliente');
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast({
@@ -126,7 +113,7 @@ export const useSearchClients = (searchTerm: string) => {
   return useQuery({
     queryKey: ['clients', 'search', searchTerm],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}?search=${encodeURIComponent(searchTerm)}`);
+      const res = await api.get(`${API_URL}?search=${encodeURIComponent(searchTerm)}`);
       if (!res.ok) throw new Error('Erro ao buscar clientes');
       return res.json();
     },
@@ -139,7 +126,7 @@ export const useClientStatusCounts = () => {
   return useQuery({
     queryKey: ['clients', 'status-counts'],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/status-counts`);
+      const res = await api.get(`${API_URL}/status-counts`);
       if (!res.ok) throw new Error('Erro ao buscar status dos clientes');
       return res.json();
     },

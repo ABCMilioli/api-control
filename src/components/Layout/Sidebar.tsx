@@ -21,7 +21,7 @@ const menuItems = [
   { icon: Activity, label: 'Instalações', path: '/installations' },
   { icon: Bell, label: 'Notificações', path: '/notifications' },
   { icon: FileText, label: 'Documentação', path: '/documentation' },
-  { icon: CreditCard, label: 'Pagamentos', path: '/payment-settings' },
+  { icon: CreditCard, label: 'Pagamentos (Em breve)', path: '#', disabled: true },
   { icon: Settings, label: 'Configurações', path: '/settings' },
 ];
 
@@ -48,12 +48,13 @@ export function Sidebar() {
               return (
                 <li key={item.path}>
                   <Link
-                    to={item.path}
+                    to={item.disabled ? '#' : item.path}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                       isActive
                         ? 'bg-primary text-white'
                         : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    } ${item.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={item.disabled ? (e) => e.preventDefault() : undefined}
                   >
                     <Icon size={20} />
                     <span className="font-medium">{item.label}</span>

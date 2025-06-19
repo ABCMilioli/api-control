@@ -1,6 +1,8 @@
 import { Router, Request, Response, RequestHandler } from 'express';
 import { prisma } from '../lib/database.js';
 import bcrypt from 'bcryptjs';
+import { AuthService } from '../services/authService.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 
@@ -55,9 +57,29 @@ const loginUser: RequestHandler = async (req, res) => {
       res.status(401).json({ error: 'Credenciais inválidas.' });
       return;
     }
+    
+    // Gera o token JWT
+    const token = AuthService.generateToken({
+      id: user.id,
+      email: user.email,
+      nome: user.nome,
+      role: user.role || 'user'
+    });
+
+    // Log para verificar se o token foi gerado
+    logger.info('Token JWT gerado com sucesso', {
+      userId: user.id,
+      email: user.email,
+      tokenLength: token.length
+    });
+
     const { password: _, ...userWithoutPassword } = user;
-    res.status(200).json(userWithoutPassword);
+    res.status(200).json({
+      user: userWithoutPassword,
+      token
+    });
   } catch (error) {
+    logger.error('Erro ao fazer login', { error: error instanceof Error ? error.message : 'Erro desconhecido' });
     res.status(500).json({ error: 'Erro ao fazer login' });
   }
 };

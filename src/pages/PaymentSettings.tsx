@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -82,15 +81,23 @@ export default function PaymentSettings() {
   });
 
   const generateCheckoutLink = (type: 'subscription' | 'one-time', planKey?: string) => {
-    const baseUrl = 'https://checkout.stripe.com/pay/';
+    // Base URL do Mercado Pago Checkout
+    const baseUrl = 'https://www.mercadopago.com.br/checkout/v1/redirect?';
     let link = '';
     
     if (type === 'subscription' && planKey) {
       const plan = planSettings[planKey as keyof typeof planSettings];
-      link = `${baseUrl}subscription#plan=${planKey}&price=${plan.price}&currency=${plan.currency}&interval=${plan.interval}`;
+      // Para assinaturas no Mercado Pago
+      link = `${baseUrl}pref_id=YOUR_PREFERENCE_ID&subscription_plan=${planKey}&title=${encodeURIComponent(plan.name)}&price=${plan.price}&currency_id=${plan.currency}`;
     } else if (type === 'one-time' && planKey) {
       const product = oneTimeProducts[planKey as keyof typeof oneTimeProducts];
-      link = `${baseUrl}payment#product=${planKey}&price=${product.price}&currency=${product.currency}`;
+      // Para pagamentos únicos no Mercado Pago
+      link = `${baseUrl}pref_id=YOUR_PREFERENCE_ID&title=${encodeURIComponent(product.name)}&price=${product.price}&currency_id=${product.currency}`;
+    }
+    
+    // Adiciona o ambiente (sandbox ou produção)
+    if (mercadoPagoSettings.sandboxMode) {
+      link += '&test=true';
     }
     
     return link;
@@ -128,123 +135,6 @@ export default function PaymentSettings() {
 
         {/* Gateways de Pagamento */}
         <TabsContent value="gateways" className="space-y-6">
-          {/* Stripe */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Stripe
-                </CardTitle>
-                <Switch
-                  checked={stripeSettings.enabled}
-                  onCheckedChange={(checked) => 
-                    setStripeSettings(prev => ({ ...prev, enabled: checked }))
-                  }
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="stripe-publishable">Chave Pública</Label>
-                  <Input
-                    id="stripe-publishable"
-                    value={stripeSettings.publishableKey}
-                    onChange={(e) => setStripeSettings(prev => ({ 
-                      ...prev, 
-                      publishableKey: e.target.value 
-                    }))}
-                    placeholder="pk_test_..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="stripe-secret">Chave Secreta</Label>
-                  <Input
-                    id="stripe-secret"
-                    type="password"
-                    value={stripeSettings.secretKey}
-                    onChange={(e) => setStripeSettings(prev => ({ 
-                      ...prev, 
-                      secretKey: e.target.value 
-                    }))}
-                    placeholder="sk_test_..."
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="stripe-webhook">Webhook Secret</Label>
-                <Input
-                  id="stripe-webhook"
-                  type="password"
-                  value={stripeSettings.webhookSecret}
-                  onChange={(e) => setStripeSettings(prev => ({ 
-                    ...prev, 
-                    webhookSecret: e.target.value 
-                  }))}
-                  placeholder="whsec_..."
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* PayPal */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  PayPal
-                </CardTitle>
-                <Switch
-                  checked={paypalSettings.enabled}
-                  onCheckedChange={(checked) => 
-                    setPaypalSettings(prev => ({ ...prev, enabled: checked }))
-                  }
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="paypal-client-id">Client ID</Label>
-                  <Input
-                    id="paypal-client-id"
-                    value={paypalSettings.clientId}
-                    onChange={(e) => setPaypalSettings(prev => ({ 
-                      ...prev, 
-                      clientId: e.target.value 
-                    }))}
-                    placeholder="Client ID do PayPal"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="paypal-secret">Client Secret</Label>
-                  <Input
-                    id="paypal-secret"
-                    type="password"
-                    value={paypalSettings.clientSecret}
-                    onChange={(e) => setPaypalSettings(prev => ({ 
-                      ...prev, 
-                      clientSecret: e.target.value 
-                    }))}
-                    placeholder="Client Secret do PayPal"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="paypal-sandbox"
-                  checked={paypalSettings.sandboxMode}
-                  onCheckedChange={(checked) => 
-                    setPaypalSettings(prev => ({ ...prev, sandboxMode: checked }))
-                  }
-                />
-                <Label htmlFor="paypal-sandbox">Modo Sandbox</Label>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Mercado Pago */}
           <Card>
             <CardHeader>
@@ -543,7 +433,7 @@ export default function PaymentSettings() {
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="collect-billing"

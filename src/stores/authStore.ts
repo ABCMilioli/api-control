@@ -10,6 +10,7 @@ interface User {
 
 interface AuthState {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -21,13 +22,15 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      token: null,
       isAuthenticated: false,
 
       initializeAuth: () => {
         const state = get();
-        if (!state.isAuthenticated) {
+        if (!state.token || !state.user) {
           set({
             user: null,
+            token: null,
             isAuthenticated: false
           });
         }
@@ -45,8 +48,12 @@ export const useAuthStore = create<AuthState>()(
             return false;
           }
 
-          const user = await response.json();
-            set({ user, isAuthenticated: true });
+          const data = await response.json();
+          set({ 
+            user: data.user, 
+            token: data.token,
+            isAuthenticated: true 
+          });
           return true;
         } catch (error) {
           return false;
@@ -67,7 +74,11 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        set({ user: null, isAuthenticated: false });
+        set({ 
+          user: null, 
+          token: null,
+          isAuthenticated: false 
+        });
       },
     }),
     {

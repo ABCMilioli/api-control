@@ -9,6 +9,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { useAuthStore } from '../stores/authStore';
 import { toast } from '../hooks/use-toast';
+import { AuthTest } from '../components/AuthTest';
 
 export default function Settings() {
   const { user, updateProfile } = useAuthStore();
@@ -604,6 +605,16 @@ export default function Settings() {
               <Button>
                 Salvar Preferências
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Teste de Autenticação JWT */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Status da Autenticação JWT</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AuthTest />
             </CardContent>
           </Card>
         </div>
