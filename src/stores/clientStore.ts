@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Client } from '../types/index.js';
+import { api } from '../lib/api.js';
 
 interface ClientStore {
   clients: Client[];
@@ -30,7 +31,7 @@ export const useClientStore = create<ClientStore>((set) => ({
   fetchClients: async (search?: string) => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch(`/api/clients${search ? `?search=${encodeURIComponent(search)}` : ''}`);
+      const res = await api.get(`/clients${search ? `?search=${encodeURIComponent(search)}` : ''}`);
       if (!res.ok) throw new Error('Erro ao carregar clientes');
       const clients = await res.json();
       set({ clients, loading: false });
@@ -42,7 +43,7 @@ export const useClientStore = create<ClientStore>((set) => ({
   fetchClient: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch(`/api/clients/${id}`);
+      const res = await api.get(`/clients/${id}`);
       if (!res.ok) throw new Error('Erro ao carregar cliente');
       const client = await res.json();
       set({ selectedClient: client, loading: false });
@@ -54,11 +55,7 @@ export const useClientStore = create<ClientStore>((set) => ({
   createClient: async (data: Omit<Client, 'id' | 'createdAt'>) => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch('/api/clients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
+      const res = await api.post('/clients', data);
       if (!res.ok) throw new Error('Erro ao criar cliente');
       await res.json();
       await useClientStore.getState().fetchClients();
@@ -71,11 +68,7 @@ export const useClientStore = create<ClientStore>((set) => ({
   updateClient: async (id: string, data: Partial<Omit<Client, 'id' | 'createdAt'>>) => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch(`/api/clients/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
+      const res = await api.put(`/clients/${id}`, data);
       if (!res.ok) throw new Error('Erro ao atualizar cliente');
       await res.json();
       await useClientStore.getState().fetchClients();
@@ -88,7 +81,7 @@ export const useClientStore = create<ClientStore>((set) => ({
   deleteClient: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch(`/api/clients/${id}`, { method: 'DELETE' });
+      const res = await api.delete(`/clients/${id}`);
       if (!res.ok) throw new Error('Erro ao deletar cliente');
       await useClientStore.getState().fetchClients();
       set({ loading: false });
@@ -104,7 +97,7 @@ export const useClientStore = create<ClientStore>((set) => ({
   fetchStatusCounts: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch('/api/clients/status-counts');
+      const res = await api.get('/clients/status-counts');
       if (!res.ok) throw new Error('Erro ao carregar contagem de status');
       const counts = await res.json();
       set({ statusCounts: counts, loading: false });

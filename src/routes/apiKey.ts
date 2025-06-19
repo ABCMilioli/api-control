@@ -2,6 +2,7 @@ import { Router, Request, Response, RequestHandler } from 'express';
 import { prisma } from '../lib/database.js';
 import { logger } from '../lib/logger.js';
 import { notificationService } from '../services/notificationService.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -309,11 +310,11 @@ const deleteAPIKey: RequestHandler = async (req: Request, res: Response): Promis
   }
 };
 
-// Registrar rotas
-router.post('/', createAPIKey);
-router.get('/', listAPIKeys);
-router.put('/:id', updateAPIKey);
-router.put('/:id/revoke', revokeAPIKey);
-router.delete('/:id', deleteAPIKey);
+// Registrar rotas protegidas por autenticação JWT
+router.post('/', authMiddleware, createAPIKey);
+router.get('/', authMiddleware, listAPIKeys);
+router.put('/:id', authMiddleware, updateAPIKey);
+router.put('/:id/revoke', authMiddleware, revokeAPIKey);
+router.delete('/:id', authMiddleware, deleteAPIKey);
 
 export { router as apiKeyRouter }; 

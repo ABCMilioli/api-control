@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { APIKey } from '../types/index.js';
+import { api } from '../lib/api.js';
 
 interface APIKeyState {
   apiKeys: APIKey[];
@@ -31,7 +32,7 @@ export const useAPIKeyStore = create<APIKeyState>()((set, get) => ({
   fetchAPIKeys: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch('/api/api-keys');
+      const response = await api.get('/api-keys');
       if (!response.ok) throw new Error('Erro ao carregar API Keys');
       const apiKeys = await response.json();
       set({ apiKeys, loading: false });
@@ -43,11 +44,7 @@ export const useAPIKeyStore = create<APIKeyState>()((set, get) => ({
   addAPIKey: async (apiKey) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch('/api/api-keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(apiKey)
-      });
+      const response = await api.post('/api-keys', apiKey);
       if (!response.ok) throw new Error('Erro ao criar API Key');
       const newAPIKey = await response.json();
       set(state => ({ 
@@ -62,11 +59,7 @@ export const useAPIKeyStore = create<APIKeyState>()((set, get) => ({
   updateAPIKey: async (id, updatedAPIKey) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`/api/api-keys/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedAPIKey)
-      });
+      const response = await api.put(`/api-keys/${id}`, updatedAPIKey);
       if (!response.ok) throw new Error('Erro ao atualizar API Key');
       const updated = await response.json();
       set(state => ({
@@ -81,9 +74,7 @@ export const useAPIKeyStore = create<APIKeyState>()((set, get) => ({
   revokeAPIKey: async (id) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`/api/api-keys/${id}/revoke`, {
-        method: 'PUT'
-      });
+      const response = await api.put(`/api-keys/${id}/revoke`);
       if (!response.ok) throw new Error('Erro ao revogar API Key');
       set(state => ({
         apiKeys: state.apiKeys.map(key => 
@@ -99,9 +90,7 @@ export const useAPIKeyStore = create<APIKeyState>()((set, get) => ({
   deleteAPIKey: async (id) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`/api/api-keys/${id}`, {
-        method: 'DELETE'
-      });
+      const response = await api.delete(`/api-keys/${id}`);
       if (!response.ok) throw new Error('Erro ao deletar API Key');
       set(state => ({
         apiKeys: state.apiKeys.filter(key => key.id !== id),
