@@ -98,6 +98,7 @@ export default function Settings() {
   const [loadingSystemConfig, setLoadingSystemConfig] = useState(false);
   const [savingSystemConfig, setSavingSystemConfig] = useState(false);
   const [savingNotifications, setSavingNotifications] = useState(false);
+  const [testingReport, setTestingReport] = useState(false);
 
   useEffect(() => {
     async function fetchSmtpConfig() {
@@ -475,6 +476,40 @@ export default function Settings() {
       });
     } finally {
       setSavingNotifications(false);
+    }
+  };
+
+  const handleTestWeeklyReport = async () => {
+    setTestingReport(true);
+    try {
+      const response = await api.post('/system-config/test-weekly-report');
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erro ao testar relatório semanal');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Relatório Semanal Testado",
+          description: "Relatório semanal gerado e enviado com sucesso!",
+        });
+      } else {
+        toast({
+          title: "Relatório Semanal Desabilitado",
+          description: result.message,
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro no Teste",
+        description: error.message || 'Erro ao testar relatório semanal',
+        variant: "destructive"
+      });
+    } finally {
+      setTestingReport(false);
     }
   };
 
@@ -1035,6 +1070,15 @@ export default function Settings() {
                     disabled={savingNotifications}
                   >
                     {savingNotifications ? 'Salvando...' : 'Salvar Preferências'}
+                  </Button>
+
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={handleTestWeeklyReport}
+                    disabled={testingReport || !systemConfig.notifyWeeklyReport}
+                  >
+                    {testingReport ? 'Testando...' : 'Testar Relatório Semanal'}
                   </Button>
                 </div>
               </form>

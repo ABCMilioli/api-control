@@ -1,6 +1,7 @@
 import { prisma } from '../lib/database.js';
 import { notificationService } from './notificationService.js';
 import { webhookService } from './webhookService.js';
+import { systemConfigService } from './systemConfigService.js';
 import { logger } from '../lib/logger.js';
 
 export const apiKeyService = {
@@ -31,7 +32,7 @@ export const apiKeyService = {
     clientId: string;
     clientName: string;
     clientEmail: string;
-    maxInstallations: number;
+    maxInstallations?: number;
     isActive?: boolean;
     expiresAt?: Date;
   }) {
@@ -47,21 +48,40 @@ export const apiKeyService = {
       throw new Error('Cliente não encontrado');
     }
 
+    // Usar configurações do sistema para valores padrão
+    const defaultLimit = await systemConfigService.getDefaultLimit();
+    const defaultExpiry = await systemConfigService.getDefaultExpiry();
+    
+    // Calcular data de expiração baseada na configuração padrão
+    const calculatedExpiresAt = data.expiresAt || new Date(Date.now() + (defaultExpiry * 24 * 60 * 60 * 1000));
+    
+    // Usar limite padrão se não especificado
+    const maxInstallations = data.maxInstallations || defaultLimit;
+
+    logger.info('Usando configurações do sistema', {
+      defaultLimit,
+      defaultExpiry,
+      calculatedExpiresAt,
+      maxInstallations
+    });
+
     const apiKey = await prisma.aPIKey.create({
       data: {
         key: data.key,
         clientId: data.clientId,
         clientName: data.clientName,
         clientEmail: data.clientEmail,
-        maxInstallations: data.maxInstallations,
+        maxInstallations,
         isActive: data.isActive !== undefined ? data.isActive : true,
-        expiresAt: data.expiresAt || null
+        expiresAt: calculatedExpiresAt
       }
     });
 
     logger.info('API Key criada com sucesso', { 
       apiKeyId: apiKey.id, 
-      clientId: apiKey.clientId 
+      clientId: apiKey.clientId,
+      maxInstallations,
+      expiresAt: calculatedExpiresAt
     });
 
     // Criar notificação
@@ -95,6 +115,7 @@ export const apiKeyService = {
         maxInstallations: apiKey.maxInstallations,
         currentInstallations: apiKey.currentInstallations,
         isActive: apiKey.isActive,
+        expiresAt: apiKey.expiresAt,
         createdAt: apiKey.createdAt,
         timestamp: new Date().toISOString()
       });

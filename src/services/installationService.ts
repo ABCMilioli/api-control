@@ -1,6 +1,7 @@
 import { prisma } from '../lib/database.js';
 import { notificationService } from './notificationService.js';
 import { webhookService } from './webhookService.js';
+import { systemConfigService } from './systemConfigService.js';
 import { logger } from '../lib/logger.js';
 import geoip from 'geoip-lite';
 
@@ -55,6 +56,24 @@ export const installationService = {
       apiKeyId: data.apiKeyId,
       reason: data.reason
     });
+
+    // Verificar se deve notificar sobre tentativas de acesso negadas
+    const shouldNotifyAccessDenied = await systemConfigService.shouldNotifyAccessDenied();
+    
+    if (shouldNotifyAccessDenied) {
+      try {
+        await notificationService.createNotification({
+          title: 'Tentativa de Acesso Negada',
+          message: `Tentativa de instalação falhada do IP ${data.ipAddress}. Motivo: ${data.reason}`,
+          type: 'warning'
+        });
+        logger.info('Notificação de acesso negado criada com sucesso');
+      } catch (error) {
+        logger.error('Erro ao criar notificação de acesso negado', { 
+          error: error instanceof Error ? error.message : 'Erro desconhecido'
+        });
+      }
+    }
 
     // Disparar webhook para evento de instalação falhada
     try {
@@ -130,6 +149,30 @@ export const installationService = {
       replacedInstallationId: data.replacedInstallationId
     });
 
+    // Verificar se deve notificar sobre chaves próximas do limite
+    const shouldNotifyKeyLimit = await systemConfigService.shouldNotifyKeyLimit();
+    const apiKey = await prisma.aPIKey.findUnique({ where: { id: data.apiKeyId } });
+    
+    if (shouldNotifyKeyLimit && apiKey) {
+      const usagePercentage = (currentInstallations / apiKey.maxInstallations) * 100;
+      
+      // Notificar quando atingir 80% do limite
+      if (usagePercentage >= 80) {
+        try {
+          await notificationService.createNotification({
+            title: 'API Key Próxima do Limite',
+            message: `A API Key do cliente ${apiKey.clientName} está com ${currentInstallations}/${apiKey.maxInstallations} instalações (${usagePercentage.toFixed(1)}%)`,
+            type: 'warning'
+          });
+          logger.info('Notificação de limite próximo criada com sucesso');
+        } catch (error) {
+          logger.error('Erro ao criar notificação de limite próximo', { 
+            error: error instanceof Error ? error.message : 'Erro desconhecido'
+          });
+        }
+      }
+    }
+
     // Disparar webhook para evento de instalação bem-sucedida
     try {
       logger.info('🚀 [INSTALLATION-WEBHOOK] Iniciando disparo de webhook para instalação bem-sucedida', { 
@@ -202,12 +245,81 @@ export const installationService = {
     if (!apiKeyData) {
       logger.warn('API Key inválida ou inativa', { apiKey: data.apiKey });
       
+      // Buscar ou criar API Key especial para tentativas inválidas
+      let invalidApiKey = await prisma.aPIKey.findFirst({
+        where: { 
+          key: 'INVALID_API_KEY',
+          clientName: 'Sistema - Tentativas Inválidas'
+        }
+      });
+
+      if (!invalidApiKey) {
+        // Verificar se o cliente especial existe
+        let systemClient = await prisma.client.findFirst({
+          where: { 
+            email: 'system@api-control.com',
+            name: 'Sistema - Tentativas Inválidas'
+          }
+        });
+
+        if (!systemClient) {
+          // Criar cliente especial se não existir
+          systemClient = await prisma.client.create({
+            data: {
+              name: 'Sistema - Tentativas Inválidas',
+              email: 'system@api-control.com',
+              company: 'Sistema Interno',
+              notes: 'Cliente especial para rastreamento de tentativas inválidas',
+              status: 'BLOCKED' // Sempre bloqueado
+            }
+          });
+          logger.info('Cliente especial para tentativas inválidas criado', { 
+            clientId: systemClient.id 
+          });
+        }
+
+        // Criar API Key especial se não existir
+        invalidApiKey = await prisma.aPIKey.create({
+          data: {
+            key: 'INVALID_API_KEY',
+            clientId: systemClient.id,
+            clientName: systemClient.name,
+            clientEmail: systemClient.email,
+            maxInstallations: 999999, // Limite alto para não bloquear
+            isActive: false, // Sempre inativa
+            expiresAt: new Date('2099-12-31') // Nunca expira
+          }
+        });
+        logger.info('API Key especial para tentativas inválidas criada', { 
+          apiKeyId: invalidApiKey.id 
+        });
+      }
+
+      // Criar instalação falhada para rastreamento
       await this.createFailedInstallation({
-        apiKeyId: 'invalid',
+        apiKeyId: invalidApiKey.id,
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
         reason: 'API_KEY_INACTIVE'
       });
+
+      // Verificar se deve notificar sobre tentativas de acesso negadas
+      const shouldNotifyAccessDenied = await systemConfigService.shouldNotifyAccessDenied();
+      
+      if (shouldNotifyAccessDenied) {
+        try {
+          await notificationService.createNotification({
+            title: 'Tentativa de Acesso Negada',
+            message: `Tentativa de instalação com API Key inválida do IP ${data.ipAddress}. Chave: ${data.apiKey}`,
+            type: 'warning'
+          });
+          logger.info('Notificação de acesso negado criada com sucesso para API Key inválida');
+        } catch (error) {
+          logger.error('Erro ao criar notificação de acesso negado', { 
+            error: error instanceof Error ? error.message : 'Erro desconhecido'
+          });
+        }
+      }
 
       return {
         success: false,
@@ -265,6 +377,13 @@ export const installationService = {
       const toRemove = activeInstallations[0];
       await this.replaceOldInstallation(toRemove.id);
       replacedInstallationId = toRemove.id;
+      
+      logger.info('Substituindo instalação antiga para permitir nova', { 
+        apiKeyId: apiKeyData.id,
+        removedInstallationId: toRemove.id,
+        currentInstallations: activeInstallations.length,
+        maxInstallations: apiKeyData.maxInstallations
+      });
       
       // Disparar webhook para evento de limite atingido
       try {
