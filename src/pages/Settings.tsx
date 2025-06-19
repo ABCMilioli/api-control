@@ -31,6 +31,14 @@ interface WebhookTestResult {
   };
 }
 
+interface SystemConfig {
+  defaultLimit: number;
+  defaultExpiry: number;
+  notifyKeyLimit: boolean;
+  notifyAccessDenied: boolean;
+  notifyWeeklyReport: boolean;
+}
+
 export default function Settings() {
   const { user, updateProfile, changePassword } = useAuthStore();
   const [formData, setFormData] = useState({
@@ -75,10 +83,21 @@ export default function Settings() {
     }
   });
 
+  const [systemConfig, setSystemConfig] = useState<SystemConfig>({
+    defaultLimit: 100,
+    defaultExpiry: 365,
+    notifyKeyLimit: true,
+    notifyAccessDenied: true,
+    notifyWeeklyReport: false
+  });
+
   const [webhooks, setWebhooks] = useState([]);
   const [loadingWebhooks, setLoadingWebhooks] = useState(false);
   const [testingWebhook, setTestingWebhook] = useState(false);
   const [testResults, setTestResults] = useState<WebhookTestResult | null>(null);
+  const [loadingSystemConfig, setLoadingSystemConfig] = useState(false);
+  const [savingSystemConfig, setSavingSystemConfig] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
 
   useEffect(() => {
     async function fetchSmtpConfig() {
@@ -116,8 +135,8 @@ export default function Settings() {
             setWebhookConfig({
               id: firstWebhook.id,
               name: firstWebhook.name,
-              url: firstWebhook.url,
-              secret: '', // Nunca carregar a chave secreta
+              url: firstWebhook.url || '',
+              secret: firstWebhook.secret || '', // Carregar a chave secreta se existir
               events: firstWebhook.events.reduce((acc: any, event: string) => {
                 acc[event] = true;
                 return acc;
@@ -132,8 +151,35 @@ export default function Settings() {
       }
     }
 
+    async function fetchSystemConfig() {
+      setLoadingSystemConfig(true);
+      try {
+        const response = await api.get('/system-config');
+        if (response.ok) {
+          const data = await response.json();
+          setSystemConfig({
+            defaultLimit: data.defaultLimit || 100,
+            defaultExpiry: data.defaultExpiry || 365,
+            notifyKeyLimit: data.notifyKeyLimit ?? true,
+            notifyAccessDenied: data.notifyAccessDenied ?? true,
+            notifyWeeklyReport: data.notifyWeeklyReport ?? false
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configurações do sistema:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao carregar configurações do sistema",
+          variant: "destructive"
+        });
+      } finally {
+        setLoadingSystemConfig(false);
+      }
+    }
+
     fetchSmtpConfig();
     fetchWebhooks();
+    fetchSystemConfig();
   }, []);
 
   const handleProfileUpdate = (e: React.FormEvent) => {
@@ -377,6 +423,58 @@ export default function Settings() {
       });
     } finally {
       setTestingWebhook(false);
+    }
+  };
+
+  const handleSystemConfigSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSystemConfig(true);
+    try {
+      const response = await api.put('/system-config', systemConfig);
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erro ao salvar configurações do sistema');
+      }
+      toast({
+        title: "Configurações do Sistema Salvas",
+        description: "As configurações do sistema foram atualizadas com sucesso",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || 'Erro ao salvar configurações do sistema',
+        variant: "destructive"
+      });
+    } finally {
+      setSavingSystemConfig(false);
+    }
+  };
+
+  const handleNotificationsSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingNotifications(true);
+    try {
+      const response = await api.put('/system-config', {
+        notifyKeyLimit: systemConfig.notifyKeyLimit,
+        notifyAccessDenied: systemConfig.notifyAccessDenied,
+        notifyWeeklyReport: systemConfig.notifyWeeklyReport
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erro ao salvar configurações de notificações');
+      }
+      toast({
+        title: "Configurações de Notificação Salvas",
+        description: "As configurações de notificação foram atualizadas com sucesso",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || 'Erro ao salvar configurações de notificações',
+        variant: "destructive"
+      });
+    } finally {
+      setSavingNotifications(false);
     }
   };
 
@@ -846,29 +944,44 @@ export default function Settings() {
             </CardHeader>
             
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="defaultLimit">Limite Padrão de Instalações</Label>
-                <Input
-                  id="defaultLimit"
-                  type="number"
-                  defaultValue="100"
-                  placeholder="100"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="defaultExpiry">Expiração Padrão (dias)</Label>
-                <Input
-                  id="defaultExpiry"
-                  type="number"
-                  defaultValue="365"
-                  placeholder="365"
-                />
-              </div>
+              <form onSubmit={handleSystemConfigSave}>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="defaultLimit">Limite Padrão de Instalações</Label>
+                    <Input
+                      id="defaultLimit"
+                      type="number"
+                      value={systemConfig.defaultLimit}
+                      placeholder="100"
+                      onChange={(e) => setSystemConfig(prev => ({ 
+                        ...prev, 
+                        defaultLimit: Number(e.target.value) 
+                      }))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="defaultExpiry">Expiração Padrão (dias)</Label>
+                    <Input
+                      id="defaultExpiry"
+                      type="number"
+                      value={systemConfig.defaultExpiry}
+                      placeholder="365"
+                      onChange={(e) => setSystemConfig(prev => ({ 
+                        ...prev, 
+                        defaultExpiry: Number(e.target.value) 
+                      }))}
+                    />
+                  </div>
 
-              <Button>
-                Salvar Configurações
-              </Button>
+                  <Button 
+                    type="submit"
+                    disabled={loadingSystemConfig || savingSystemConfig}
+                  >
+                    {savingSystemConfig ? 'Salvando...' : 'Salvar Configurações'}
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
 
@@ -879,24 +992,52 @@ export default function Settings() {
             </CardHeader>
             
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span>Notificar sobre chaves próximas do limite</span>
-                <input type="checkbox" defaultChecked className="toggle" />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span>Alertas de tentativas de acesso negadas</span>
-                <input type="checkbox" defaultChecked className="toggle" />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span>Relatório semanal por email</span>
-                <input type="checkbox" className="toggle" />
-              </div>
+              <form onSubmit={handleNotificationsSave}>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span>Notificar sobre chaves próximas do limite</span>
+                    <input
+                      type="checkbox"
+                      checked={systemConfig.notifyKeyLimit}
+                      onChange={(e) => setSystemConfig(prev => ({ 
+                        ...prev, 
+                        notifyKeyLimit: e.target.checked 
+                      }))}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <span>Alertas de tentativas de acesso negadas</span>
+                    <input
+                      type="checkbox"
+                      checked={systemConfig.notifyAccessDenied}
+                      onChange={(e) => setSystemConfig(prev => ({ 
+                        ...prev, 
+                        notifyAccessDenied: e.target.checked 
+                      }))}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <span>Relatório semanal por email</span>
+                    <input
+                      type="checkbox"
+                      checked={systemConfig.notifyWeeklyReport}
+                      onChange={(e) => setSystemConfig(prev => ({ 
+                        ...prev, 
+                        notifyWeeklyReport: e.target.checked 
+                      }))}
+                    />
+                  </div>
 
-              <Button>
-                Salvar Preferências
-              </Button>
+                  <Button 
+                    type="submit"
+                    disabled={savingNotifications}
+                  >
+                    {savingNotifications ? 'Salvando...' : 'Salvar Preferências'}
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
 

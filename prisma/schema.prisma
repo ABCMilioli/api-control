@@ -252,6 +252,19 @@ model WebhookConfig {
   @@map("webhook_config")
 }
 
+model SystemConfig {
+  id                  String   @id @default("main") // sempre um único registro
+  defaultLimit        Int      @default(100)
+  defaultExpiry       Int      @default(365)
+  notifyKeyLimit      Boolean  @default(true)
+  notifyAccessDenied  Boolean  @default(true)
+  notifyWeeklyReport  Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+  createdAt           DateTime @default(now())
+
+  @@map("system_config")
+}
+
 enum SMTPEncryption {
   NONE
   SSL

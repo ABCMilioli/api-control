@@ -9,6 +9,7 @@ import { validateRouter } from './routes/validate.js';
 import { installationRouter } from './routes/installation.js';
 import { notificationRouter } from './routes/notificationRoutes.js';
 import { webhookRouter } from './routes/webhook.js';
+import { systemConfigRouter } from './routes/systemConfig.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -61,6 +62,7 @@ app.use('/api/validate', validateRouter);
 app.use('/api/installations', installationRouter);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/webhooks', webhookRouter);
+app.use('/api/system-config', systemConfigRouter);
 
 // Rota de health check
 const healthCheck: RequestHandler = (req: Request, res: Response) => {
