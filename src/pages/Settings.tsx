@@ -33,6 +33,8 @@ export default function Settings() {
   });
 
   const [webhookConfig, setWebhookConfig] = useState({
+    id: '',
+    name: '',
     url: '',
     secret: '',
     events: {
@@ -53,6 +55,9 @@ export default function Settings() {
       'system.maintenance': false
     }
   });
+
+  const [webhooks, setWebhooks] = useState([]);
+  const [loadingWebhooks, setLoadingWebhooks] = useState(false);
 
   useEffect(() => {
     async function fetchSmtpConfig() {
@@ -76,7 +81,38 @@ export default function Settings() {
         // Ignorar erro silenciosamente
       }
     }
+
+    async function fetchWebhooks() {
+      setLoadingWebhooks(true);
+      try {
+        const response = await api.get('/webhooks');
+        if (response.ok) {
+          const data = await response.json();
+          setWebhooks(data);
+          // Se há webhooks, carregar o primeiro
+          if (data.length > 0) {
+            const firstWebhook = data[0];
+            setWebhookConfig({
+              id: firstWebhook.id,
+              name: firstWebhook.name,
+              url: firstWebhook.url,
+              secret: '', // Nunca carregar a chave secreta
+              events: firstWebhook.events.reduce((acc: any, event: string) => {
+                acc[event] = true;
+                return acc;
+              }, {})
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar webhooks:', error);
+      } finally {
+        setLoadingWebhooks(false);
+      }
+    }
+
     fetchSmtpConfig();
+    fetchWebhooks();
   }, []);
 
   const handleProfileUpdate = (e: React.FormEvent) => {
@@ -170,7 +206,7 @@ export default function Settings() {
     }
   };
 
-  const handleWebhookSave = (e: React.FormEvent) => {
+  const handleWebhookSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!webhookConfig.url) {
@@ -195,11 +231,57 @@ export default function Settings() {
       return;
     }
 
-    // Aqui seria feita a integração com a API para salvar as configurações do webhook
-    toast({
-      title: "Configurações de Webhook Salvas",
-      description: `Webhook configurado para ${selectedEvents.length} eventos`,
-    });
+    try {
+      const webhookData = {
+        name: webhookConfig.name || 'Webhook Principal',
+        url: webhookConfig.url,
+        secret: webhookConfig.secret || undefined,
+        events: selectedEvents,
+        isActive: true,
+        retryCount: 3,
+        timeout: 30000
+      };
+
+      let response;
+      if (webhookConfig.id) {
+        // Atualizar webhook existente
+        response = await api.put(`/webhooks/${webhookConfig.id}`, webhookData);
+      } else {
+        // Criar novo webhook
+        response = await api.post('/webhooks', webhookData);
+      }
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erro ao salvar configurações de webhook');
+      }
+
+      const savedWebhook = await response.json();
+      
+      toast({
+        title: "Configurações de Webhook Salvas",
+        description: `Webhook configurado para ${selectedEvents.length} eventos`,
+      });
+
+      // Atualizar o estado com o webhook salvo
+      setWebhookConfig(prev => ({
+        ...prev,
+        id: savedWebhook.id,
+        name: savedWebhook.name
+      }));
+
+      // Recarregar lista de webhooks
+      const webhooksResponse = await api.get('/webhooks');
+      if (webhooksResponse.ok) {
+        setWebhooks(await webhooksResponse.json());
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || 'Erro ao salvar configurações de webhook',
+        variant: "destructive"
+      });
+    }
   };
 
   const handleWebhookEventChange = (event: string, checked: boolean) => {
@@ -451,6 +533,20 @@ export default function Settings() {
             <CardContent>
               <form onSubmit={handleWebhookSave} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="webhookName">Nome do Webhook *</Label>
+                    <Input
+                      id="webhookName"
+                      placeholder="Webhook Principal"
+                      value={webhookConfig.name}
+                      onChange={(e) => setWebhookConfig(prev => ({ 
+                        ...prev, 
+                        name: e.target.value 
+                      }))}
+                      required
+                    />
+                  </div>
+
                   <div>
                     <Label htmlFor="webhookUrl">URL do Webhook *</Label>
                     <Input

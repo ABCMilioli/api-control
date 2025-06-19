@@ -237,6 +237,21 @@ model SMTPConfig {
   @@map("smtp_config")
 }
 
+model WebhookConfig {
+  id          String   @id @default(cuid())
+  name        String   // Nome descritivo da configuração
+  url         String   // URL do webhook
+  secret      String?  // Chave secreta para assinatura (opcional)
+  events      Json     // Array de eventos habilitados como JSON
+  isActive    Boolean  @default(true)
+  retryCount  Int      @default(3) // Número de tentativas em caso de falha
+  timeout     Int      @default(30000) // Timeout em ms (padrão 30s)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("webhook_config")
+}
+
 enum SMTPEncryption {
   NONE
   SSL

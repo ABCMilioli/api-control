@@ -1,0 +1,6 @@
+# Migration para adicionar configurações de webhook
+migration_lock = "prisma"
+
+[[migrations]]
+name = "add_webhook_config"
+checksum = "manual_migration_20250619031817" 
