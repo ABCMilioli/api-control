@@ -190,6 +190,83 @@ router.get('/admin-exists', async (req: Request, res: Response) => {
   }
 });
 
+// Criar configuração SMTP (apenas se não existir ativa)
+router.post('/smtp-config', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const exists = await prisma.sMTPConfig.findFirst({ where: { ativo: true } });
+    if (exists) {
+      res.status(409).json({ error: 'Já existe uma configuração SMTP ativa.' });
+      return;
+    }
+    const { host, port, username, password, encryption, fromEmail, fromName } = req.body;
+    if (!host || !port || !username || !password || !encryption || !fromEmail || !fromName) {
+      res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
+      return;
+    }
+    const smtpConfig = await prisma.sMTPConfig.create({
+      data: {
+        host,
+        port: Number(port),
+        username,
+        password,
+        encryption,
+        fromEmail,
+        fromName,
+        ativo: true
+      }
+    });
+    res.status(201).json(smtpConfig);
+    return;
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao criar configuração SMTP.' });
+    return;
+  }
+});
+
+// Atualizar configuração SMTP (por id)
+router.put('/smtp-config/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { host, port, username, password, encryption, fromEmail, fromName, ativo } = req.body;
+    const smtpConfig = await prisma.sMTPConfig.update({
+      where: { id },
+      data: {
+        host,
+        port: Number(port),
+        username,
+        password,
+        encryption,
+        fromEmail,
+        fromName,
+        ativo: ativo !== undefined ? ativo : true
+      }
+    });
+    res.json(smtpConfig);
+    return;
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar configuração SMTP.' });
+    return;
+  }
+});
+
+// Buscar configuração SMTP ativa
+router.get('/smtp-config', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const config = await prisma.sMTPConfig.findFirst({ where: { ativo: true } });
+    if (!config) {
+      res.status(404).json({ error: 'Nenhuma configuração SMTP encontrada.' });
+      return;
+    }
+    // Nunca retornar a senha
+    const { password, ...configWithoutPassword } = config;
+    res.json(configWithoutPassword);
+    return;
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar configuração SMTP.' });
+    return;
+  }
+});
+
 // Registrar as rotas
 router.post('/', createUser);
 router.post('/login', loginUser);

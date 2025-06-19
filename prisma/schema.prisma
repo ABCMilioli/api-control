@@ -218,6 +218,30 @@ model Notification {
   @@map("notifications")
 }
 
+model SMTPConfig {
+  id          String          @id @default(cuid())
+  host        String
+  port        Int             @default(587)
+  username    String
+  password    String
+  encryption  SMTPEncryption  @default(TLS)
+  fromEmail   String
+  fromName    String
+  ativo       Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("smtp_config")
+}
+
+enum SMTPEncryption {
+  NONE
+  SSL
+  TLS
+
+  @@map("smtp_encryption")
+}
+
 // Enums
 enum Role {
   ADMIN

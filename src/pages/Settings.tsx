@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '../components/Layout/Header';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useAuthStore } from '../stores/authStore';
 import { toast } from '../hooks/use-toast';
 import { AuthTest } from '../components/AuthTest';
+import { api } from '../lib/api';
 
 export default function Settings() {
   const { user, updateProfile, changePassword } = useAuthStore();
@@ -52,6 +53,31 @@ export default function Settings() {
       'system.maintenance': false
     }
   });
+
+  useEffect(() => {
+    async function fetchSmtpConfig() {
+      try {
+        const response = await api.get('/users/smtp-config');
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.host) {
+            setSmtpConfig({
+              host: data.host || '',
+              port: String(data.port || '587'),
+              username: data.username || '',
+              password: '', // nunca preencher senha por segurança
+              encryption: (data.encryption || 'TLS').toLowerCase(),
+              fromEmail: data.fromEmail || '',
+              fromName: data.fromName || ''
+            });
+          }
+        }
+      } catch (error) {
+        // Ignorar erro silenciosamente
+      }
+    }
+    fetchSmtpConfig();
+  }, []);
 
   const handleProfileUpdate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,9 +132,8 @@ export default function Settings() {
     }
   };
 
-  const handleSmtpSave = (e: React.FormEvent) => {
+  const handleSmtpSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     // Validação básica
     if (!smtpConfig.host || !smtpConfig.username || !smtpConfig.password) {
       toast({
@@ -118,12 +143,31 @@ export default function Settings() {
       });
       return;
     }
-
-    // Aqui seria feita a integração com a API para salvar as configurações SMTP
-    toast({
-      title: "Configurações SMTP Salvas",
-      description: "As configurações de email foram atualizadas com sucesso",
-    });
+    try {
+      const response = await api.post('/users/smtp-config', {
+        host: smtpConfig.host,
+        port: Number(smtpConfig.port),
+        username: smtpConfig.username,
+        password: smtpConfig.password,
+        encryption: smtpConfig.encryption.toUpperCase(),
+        fromEmail: smtpConfig.fromEmail,
+        fromName: smtpConfig.fromName
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erro ao salvar configurações SMTP');
+      }
+      toast({
+        title: "Configurações SMTP Salvas",
+        description: "As configurações de email foram atualizadas com sucesso",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || 'Erro ao salvar configurações SMTP',
+        variant: "destructive"
+      });
+    }
   };
 
   const handleWebhookSave = (e: React.FormEvent) => {
