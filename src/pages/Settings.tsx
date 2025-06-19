@@ -12,7 +12,7 @@ import { toast } from '../hooks/use-toast';
 import { AuthTest } from '../components/AuthTest';
 
 export default function Settings() {
-  const { user, updateProfile } = useAuthStore();
+  const { user, updateProfile, changePassword } = useAuthStore();
   const [formData, setFormData] = useState({
     nome: user?.nome || '',
     email: user?.email || '',
@@ -67,9 +67,8 @@ export default function Settings() {
     });
   };
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (formData.newPassword !== formData.confirmPassword) {
       toast({
         title: "Erro",
@@ -78,7 +77,6 @@ export default function Settings() {
       });
       return;
     }
-
     if (formData.newPassword.length < 6) {
       toast({
         title: "Erro",
@@ -87,19 +85,25 @@ export default function Settings() {
       });
       return;
     }
-
-    // Aqui seria feita a validação da senha atual e atualização
-    toast({
-      title: "Senha Alterada",
-      description: "Sua senha foi alterada com sucesso",
-    });
-    
-    setFormData(prev => ({
-      ...prev,
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    }));
+    const result = await changePassword(formData.currentPassword, formData.newPassword);
+    if (result.success) {
+      toast({
+        title: "Senha Alterada",
+        description: result.message,
+      });
+      setFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }));
+    } else {
+      toast({
+        title: "Erro",
+        description: result.message,
+        variant: "destructive"
+      });
+    }
   };
 
   const handleSmtpSave = (e: React.FormEvent) => {

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { api } from '../lib/api.js';
 
 interface User {
   id: string;
@@ -14,7 +15,8 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  updateProfile: (data: { nome: string; email: string }) => void;
+  updateProfile: (data: { nome: string; email: string }) => Promise<boolean>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
   initializeAuth: () => void;
 }
 
@@ -60,16 +62,28 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      updateProfile: (data: { nome: string; email: string }) => {
-        const state = get();
-        if (state.user) {
-          set({
-            user: {
-              ...state.user,
-              nome: data.nome,
-              email: data.email
-            }
-          });
+      updateProfile: async (data: { nome: string; email: string }) => {
+        try {
+          const response = await api.put('/users/me', data);
+          if (!response.ok) return false;
+          const updatedUser = await response.json();
+          set({ user: updatedUser });
+          return true;
+        } catch (error) {
+          return false;
+        }
+      },
+
+      changePassword: async (currentPassword: string, newPassword: string) => {
+        try {
+          const response = await api.put('/users/me/password', { currentPassword, newPassword });
+          const data = await response.json();
+          if (!response.ok) {
+            return { success: false, message: data.error || 'Erro ao alterar senha' };
+          }
+          return { success: true, message: data.message || 'Senha alterada com sucesso' };
+        } catch (error) {
+          return { success: false, message: 'Erro ao alterar senha' };
         }
       },
 

@@ -3,6 +3,7 @@ import { prisma } from '../lib/database.js';
 import bcrypt from 'bcryptjs';
 import { AuthService } from '../services/authService.js';
 import { logger } from '../lib/logger.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -83,6 +84,96 @@ const loginUser: RequestHandler = async (req, res) => {
     res.status(500).json({ error: 'Erro ao fazer login' });
   }
 };
+
+// Rota para atualizar perfil do usuário autenticado
+router.put('/me', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { nome, email } = req.body;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Usuário não autenticado' });
+      return;
+    }
+    if (!nome || !email) {
+      res.status(400).json({ error: 'Nome e email são obrigatórios' });
+      return;
+    }
+
+    // Verifica se o novo email já está em uso por outro usuário
+    const emailExists = await prisma.user.findFirst({
+      where: {
+        email,
+        id: { not: userId }
+      }
+    });
+    if (emailExists) {
+      res.status(409).json({ error: 'Email já cadastrado para outro usuário' });
+      return;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { nome, email }
+    });
+
+    logger.info('Perfil do usuário atualizado', { userId, nome, email });
+    const { password, ...userWithoutPassword } = updatedUser;
+    res.json(userWithoutPassword);
+    return;
+  } catch (error) {
+    logger.error('Erro ao atualizar perfil do usuário', { error: error instanceof Error ? error.message : 'Erro desconhecido' });
+    res.status(500).json({ error: 'Erro ao atualizar perfil do usuário' });
+    return;
+  }
+});
+
+// Rota para alterar senha do usuário autenticado
+router.put('/me/password', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Usuário não autenticado' });
+      return;
+    }
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: 'Senha atual e nova senha são obrigatórias' });
+      return;
+    }
+    if (newPassword.length < 6) {
+      res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      res.status(404).json({ error: 'Usuário não encontrado' });
+      return;
+    }
+
+    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!passwordMatch) {
+      res.status(401).json({ error: 'Senha atual incorreta' });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
+
+    logger.info('Senha do usuário alterada com sucesso', { userId });
+    res.json({ success: true, message: 'Senha alterada com sucesso' });
+    return;
+  } catch (error) {
+    logger.error('Erro ao alterar senha do usuário', { error: error instanceof Error ? error.message : 'Erro desconhecido' });
+    res.status(500).json({ error: 'Erro ao alterar senha do usuário' });
+    return;
+  }
+});
 
 // Registrar as rotas
 router.post('/', createUser);
