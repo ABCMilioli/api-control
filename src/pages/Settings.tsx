@@ -12,6 +12,25 @@ import { toast } from '../hooks/use-toast';
 import { AuthTest } from '../components/AuthTest';
 import { api } from '../lib/api';
 
+interface WebhookTestResult {
+  webhookId: string;
+  webhookName: string;
+  webhookUrl: string;
+  events: Array<{
+    event: string;
+    success: boolean;
+    statusCode?: number;
+    response?: string;
+    error?: string;
+    retryCount: number;
+  }>;
+  summary: {
+    total: number;
+    successful: number;
+    failed: number;
+  };
+}
+
 export default function Settings() {
   const { user, updateProfile, changePassword } = useAuthStore();
   const [formData, setFormData] = useState({
@@ -58,6 +77,8 @@ export default function Settings() {
 
   const [webhooks, setWebhooks] = useState([]);
   const [loadingWebhooks, setLoadingWebhooks] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState(false);
+  const [testResults, setTestResults] = useState<WebhookTestResult | null>(null);
 
   useEffect(() => {
     async function fetchSmtpConfig() {
@@ -292,6 +313,71 @@ export default function Settings() {
         [event]: checked
       }
     }));
+  };
+
+  const handleTestWebhook = async () => {
+    if (!webhookConfig.id) {
+      toast({
+        title: "Erro",
+        description: "Salve o webhook primeiro antes de testar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const selectedEvents = Object.entries(webhookConfig.events)
+      .filter(([_, enabled]) => enabled)
+      .map(([event, _]) => event);
+
+    if (selectedEvents.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Selecione pelo menos um evento para testar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setTestingWebhook(true);
+    setTestResults(null);
+
+    try {
+      const response = await api.post(`/webhooks/${webhookConfig.id}/test-events`, {
+        events: selectedEvents
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erro ao testar webhook');
+      }
+
+      const results = await response.json();
+      setTestResults(results);
+
+      const successfulEvents = results.summary.successful;
+      const totalEvents = results.summary.total;
+
+      if (successfulEvents === totalEvents) {
+        toast({
+          title: "Teste Concluído",
+          description: `Todos os ${totalEvents} eventos foram enviados com sucesso!`,
+        });
+      } else {
+        toast({
+          title: "Teste Concluído",
+          description: `${successfulEvents} de ${totalEvents} eventos foram enviados com sucesso`,
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro no Teste",
+        description: error.message || 'Erro ao testar webhook',
+        variant: "destructive"
+      });
+    } finally {
+      setTestingWebhook(false);
+    }
   };
 
   return (
@@ -687,7 +773,69 @@ export default function Settings() {
                 <Button type="submit">
                   Salvar Configurações de Webhook
                 </Button>
+
+                {webhookConfig.id && (
+                  <div className="flex gap-2">
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={handleTestWebhook}
+                      disabled={testingWebhook}
+                    >
+                      {testingWebhook ? 'Testando...' : 'Testar Webhook'}
+                    </Button>
+                  </div>
+                )}
               </form>
+
+              {/* Resultados do Teste */}
+              {testResults && (
+                <div className="mt-6 p-4 border rounded-lg bg-gray-50">
+                  <h4 className="font-medium text-sm text-gray-700 mb-3">Resultados do Teste</h4>
+                  
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between text-sm">
+                      <span>Webhook:</span>
+                      <span className="font-mono text-xs">{testResults.webhookName}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>URL:</span>
+                      <span className="font-mono text-xs">{testResults.webhookUrl}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Total de Eventos:</span>
+                      <span>{testResults.summary.total}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Sucessos:</span>
+                      <span className="text-green-600">{testResults.summary.successful}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Falhas:</span>
+                      <span className="text-red-600">{testResults.summary.failed}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h5 className="font-medium text-xs text-gray-600">Detalhes por Evento:</h5>
+                    {testResults.events.map((event: any, index: number) => (
+                      <div key={index} className="flex justify-between items-center text-xs p-2 bg-white rounded border">
+                        <span className="font-mono">{event.event}</span>
+                        <div className="flex items-center gap-2">
+                          {event.success ? (
+                            <span className="text-green-600">✓ Sucesso</span>
+                          ) : (
+                            <span className="text-red-600">✗ Falha</span>
+                          )}
+                          {event.statusCode && (
+                            <span className="text-gray-500">({event.statusCode})</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

@@ -1,6 +1,7 @@
 import { prisma } from '../lib/database.js';
 import { Client } from '../types/index.js';
 import { notificationService } from './notificationService.js';
+import { webhookService } from './webhookService.js';
 import { logger } from '../lib/logger.js';
 
 function normalizeClient(client: any): Client {
@@ -95,10 +96,44 @@ export const clientService = {
       });
     }
 
+    // Disparar webhook para evento de cliente criado
+    try {
+      logger.info('🚀 [CLIENT-WEBHOOK] Iniciando disparo de webhook para cliente criado', { 
+        clientId: client.id,
+        clientName: client.name,
+        event: 'client.created'
+      });
+      
+      await webhookService.dispatchWebhook('client.created', {
+        clientId: client.id,
+        name: client.name,
+        email: client.email,
+        company: client.company,
+        status: client.status,
+        createdAt: client.createdAt,
+        timestamp: new Date().toISOString()
+      });
+      
+      logger.info('✅ [CLIENT-WEBHOOK] Webhook disparado com sucesso para cliente criado', { 
+        clientId: client.id,
+        clientName: client.name,
+        event: 'client.created'
+      });
+    } catch (error) {
+      logger.error('💥 [CLIENT-WEBHOOK] Erro ao disparar webhook para cliente criado', { 
+        clientId: client.id,
+        clientName: client.name,
+        event: 'client.created',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+    }
+
     return normalizeClient(client);
   },
 
   async updateClient(id: string, data: Partial<Omit<Client, 'id' | 'createdAt'>>): Promise<Client> {
+    logger.info('🔍 [DEBUG] MÉTODO updateClient INICIADO', { id, data });
     logger.info('Iniciando atualização de cliente', { id, data });
     
     const { name, email, company, phone, notes, status } = data;
@@ -168,6 +203,85 @@ export const clientService = {
       });
     }
 
+    // Disparar webhook para evento de cliente atualizado
+    logger.info('🔍 [DEBUG] Antes de chamar webhook service - client.updated');
+    try {
+      logger.info('🚀 [CLIENT-WEBHOOK] Iniciando disparo de webhook para cliente atualizado', { 
+        clientId: client.id,
+        clientName: client.name,
+        event: 'client.updated',
+        previousStatus: existingClient.status,
+        newStatus: client.status
+      });
+      
+      await webhookService.dispatchWebhook('client.updated', {
+        clientId: client.id,
+        name: client.name,
+        email: client.email,
+        company: client.company,
+        status: client.status,
+        previousStatus: existingClient.status,
+        updatedAt: new Date().toISOString(),
+        timestamp: new Date().toISOString()
+      });
+      
+      logger.info('✅ [CLIENT-WEBHOOK] Webhook disparado com sucesso para cliente atualizado', { 
+        clientId: client.id,
+        clientName: client.name,
+        event: 'client.updated'
+      });
+    } catch (error) {
+      logger.error('💥 [CLIENT-WEBHOOK] Erro ao disparar webhook para cliente atualizado', { 
+        clientId: client.id,
+        clientName: client.name,
+        event: 'client.updated',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+    }
+    logger.info('🔍 [DEBUG] Depois de chamar webhook service - client.updated');
+
+    // Se o status foi alterado para SUSPENDED ou BLOCKED, disparar webhook específico
+    if (status && status !== existingClient.status && (status === 'SUSPENDED' || status === 'BLOCKED')) {
+      logger.info('🔍 [DEBUG] Antes de chamar webhook service - mudança de status');
+      try {
+        const eventName = status === 'SUSPENDED' ? 'client.suspended' : 'client.blocked';
+        
+        logger.info('🚀 [CLIENT-WEBHOOK] Iniciando disparo de webhook para mudança de status', { 
+          clientId: client.id,
+          clientName: client.name,
+          event: eventName,
+          previousStatus: existingClient.status,
+          newStatus: status
+        });
+        
+        await webhookService.dispatchWebhook(eventName, {
+          clientId: client.id,
+          name: client.name,
+          email: client.email,
+          company: client.company,
+          previousStatus: existingClient.status,
+          newStatus: status,
+          timestamp: new Date().toISOString()
+        });
+        
+        logger.info(`✅ [CLIENT-WEBHOOK] Webhook disparado com sucesso para ${eventName}`, { 
+          clientId: client.id,
+          clientName: client.name,
+          event: eventName
+        });
+      } catch (error) {
+        logger.error(`💥 [CLIENT-WEBHOOK] Erro ao disparar webhook para ${status}`, { 
+          clientId: client.id,
+          clientName: client.name,
+          event: status === 'SUSPENDED' ? 'client.suspended' : 'client.blocked',
+          error: error instanceof Error ? error.message : 'Erro desconhecido',
+          stack: error instanceof Error ? error.stack : undefined
+        });
+      }
+      logger.info('🔍 [DEBUG] Depois de chamar webhook service - mudança de status');
+    }
+
     return normalizeClient(client);
   },
 
@@ -199,6 +313,40 @@ export const clientService = {
       logger.info('Notificação criada com sucesso para exclusão de cliente');
     } catch (error) {
       logger.error('Erro ao criar notificação para exclusão de cliente', { 
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+    }
+
+    // Disparar webhook para evento de cliente removido
+    try {
+      logger.info('🚀 [CLIENT-WEBHOOK] Iniciando disparo de webhook para cliente removido', { 
+        clientId: existingClient.id,
+        clientName: existingClient.name,
+        event: 'client.deleted',
+        status: existingClient.status
+      });
+      
+      await webhookService.dispatchWebhook('client.deleted', {
+        clientId: existingClient.id,
+        name: existingClient.name,
+        email: existingClient.email,
+        company: existingClient.company,
+        status: existingClient.status,
+        deletedAt: new Date().toISOString(),
+        timestamp: new Date().toISOString()
+      });
+      
+      logger.info('✅ [CLIENT-WEBHOOK] Webhook disparado com sucesso para cliente removido', { 
+        clientId: existingClient.id,
+        clientName: existingClient.name,
+        event: 'client.deleted'
+      });
+    } catch (error) {
+      logger.error('💥 [CLIENT-WEBHOOK] Erro ao disparar webhook para cliente removido', { 
+        clientId: existingClient.id,
+        clientName: existingClient.name,
+        event: 'client.deleted',
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         stack: error instanceof Error ? error.stack : undefined
       });
