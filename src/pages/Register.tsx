@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from '../hooks/use-toast';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -14,6 +14,28 @@ export default function Register() {
     confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch('/api/users/admin-exists')
+      .then(res => res.json())
+      .then(data => {
+        if (data.exists) {
+          navigate('/login', { replace: true });
+        } else {
+          setCheckingAdmin(false);
+        }
+      })
+      .catch(() => {
+        toast({
+          title: 'Erro',
+          description: 'Erro ao verificar administrador',
+          variant: 'destructive'
+        });
+        setCheckingAdmin(false);
+      });
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +72,8 @@ export default function Register() {
       });
 
       if (!response.ok) {
-        throw new Error('Erro ao criar usuário');
+        const data = await response.json();
+        throw new Error(data.error || 'Erro ao criar usuário');
       }
 
       toast({
@@ -65,16 +88,25 @@ export default function Register() {
         password: '',
         confirmPassword: ''
       });
-    } catch (error) {
+      navigate('/login');
+    } catch (error: any) {
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao criar o usuário",
+        description: error.message || "Ocorreu um erro ao criar o usuário",
         variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
+
+  if (checkingAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary-700">
+        <span className="text-white text-lg">Verificando...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary to-primary-700 flex items-center justify-center p-4">

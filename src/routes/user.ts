@@ -10,33 +10,38 @@ const router = Router();
 // Handler da rota de criação de usuário
 const createUser: RequestHandler = async (req, res) => {
   try {
+    const adminExists = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+    if (adminExists) {
+      res.status(403).json({ error: 'Já existe um administrador cadastrado.' });
+      return;
+    }
     const { nome, email, password } = req.body;
-
     if (!nome || !email || !password) {
       res.status(400).json({ error: 'Nome, email e senha são obrigatórios.' });
       return;
     }
-
-    // Verifica se o email já existe
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
+    if (password.length < 6) {
+      res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres.' });
+      return;
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: {
+        nome,
+        email,
+        password: hashedPassword,
+        role: 'ADMIN',
+      },
+    });
+    res.status(201).json({ id: user.id, nome: user.nome, email: user.email, role: user.role });
+    return;
+  } catch (error: any) {
+    if (error.code === 'P2002') {
       res.status(409).json({ error: 'Email já cadastrado.' });
       return;
     }
-
-    // Hash da senha
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Cria o usuário
-    const user = await prisma.user.create({
-      data: { nome, email, password: hashedPassword }
-    });
-
-    // Retorna o usuário criado (sem a senha)
-    const { password: _, ...userWithoutPassword } = user;
-    res.status(201).json(userWithoutPassword);
-  } catch (error) {
-    res.status(500).json({ error: 'Erro ao criar usuário' });
+    res.status(500).json({ error: 'Erro ao criar usuário.' });
+    return;
   }
 };
 
@@ -172,6 +177,16 @@ router.put('/me/password', authMiddleware, async (req: Request, res: Response) =
     logger.error('Erro ao alterar senha do usuário', { error: error instanceof Error ? error.message : 'Erro desconhecido' });
     res.status(500).json({ error: 'Erro ao alterar senha do usuário' });
     return;
+  }
+});
+
+// Rota para verificar se existe ADMIN
+router.get('/admin-exists', async (req: Request, res: Response) => {
+  try {
+    const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+    res.json({ exists: !!admin });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao verificar admin' });
   }
 });
 

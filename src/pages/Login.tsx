@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -89,17 +88,11 @@ export default function Login() {
             </Button>
           </form>
           
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600 mb-2">Credenciais de teste:</p>
-            <p className="text-xs text-gray-500">Email: admin@apicontrol.com</p>
-            <p className="text-xs text-gray-500">Senha: 123456</p>
-          </div>
-
           <div className="mt-4 text-center">
             <p className="text-sm text-gray-600">
-              Precisa criar uma conta de administrador?{' '}
-              <Link to="/register" className="text-primary hover:underline">
-                Registrar-se
+              Esqueceu sua senha?{' '}
+              <Link to="/recuperar-senha" className="text-primary hover:underline">
+                Recuperar senha
               </Link>
             </p>
           </div>
