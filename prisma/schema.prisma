@@ -20,6 +20,9 @@ model User {
   dataCriacao     DateTime @default(now())
   dataAtualizacao DateTime @updatedAt
 
+  resetToken         String?
+  resetTokenExpires  DateTime?
+
   notifications   Notification[] // Relação com notificações
 
   @@map("users")

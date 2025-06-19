@@ -20,6 +20,7 @@ import NotFound from "./pages/NotFound";
 import Register from "./pages/Register";
 import Documentation from "./pages/Documentation";
 import RecuperarSenha from "./pages/RecuperarSenha";
+import RedefinirSenha from "./pages/RedefinirSenha";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,6 +81,7 @@ const App: React.FC = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
             <Route path="/" element={
               <ProtectedRoute>
                 <Dashboard />

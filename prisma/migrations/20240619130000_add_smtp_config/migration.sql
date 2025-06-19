@@ -16,4 +16,8 @@ CREATE TABLE "smtp_config" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "smtp_config_pkey" PRIMARY KEY ("id")
-); 
+);
+
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN "resetToken" TEXT;
+ALTER TABLE "users" ADD COLUMN "resetTokenExpires" TIMESTAMP(3); 

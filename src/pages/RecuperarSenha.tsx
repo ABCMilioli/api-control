@@ -1,29 +1,55 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from '../hooks/use-toast';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 
 export default function RecuperarSenha() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  
+  const token = searchParams.get('token');
+
+  useEffect(() => {
+    // Se há um token na URL, redireciona para a página de redefinição
+    if (token) {
+      navigate(`/redefinir-senha?token=${token}`);
+    }
+  }, [token, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulação de envio
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const response = await fetch('/api/users/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erro ao enviar email de recuperação');
+      }
       setEnviado(true);
       toast({
         title: 'Solicitação enviada',
         description: 'Se o email existir, você receberá instruções para redefinir sua senha.',
         variant: 'default'
       });
-    }, 1200);
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao enviar email de recuperação',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

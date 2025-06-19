@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import { AuthService } from '../services/authService.js';
 import { logger } from '../lib/logger.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { sendMail } from '../services/emailService.js';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -263,6 +265,93 @@ router.get('/smtp-config', authMiddleware, async (req: Request, res: Response) =
     return;
   } catch (error) {
     res.status(500).json({ error: 'Erro ao buscar configuração SMTP.' });
+    return;
+  }
+});
+
+// Rota de recuperação de senha
+router.post('/forgot-password', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      res.status(400).json({ error: 'Email é obrigatório.' });
+      return;
+    }
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      // Por segurança, sempre retorna sucesso
+      res.json({ success: true });
+      return;
+    }
+    // Gerar token de recuperação (válido por 1h)
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 60 * 60 * 1000);
+    // Salvar token e expiração no usuário (ou em tabela separada se preferir)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetToken: token, resetTokenExpires: expires }
+    });
+    // Montar link de recuperação
+    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:5173'}/recuperar-senha?token=${token}`;
+    // Enviar email
+    await sendMail({
+      to: email,
+      subject: 'Recuperação de Senha',
+      html: `<p>Olá,</p><p>Para redefinir sua senha, clique no link abaixo:</p><p><a href="${resetLink}">${resetLink}</a></p><p>Se não solicitou, ignore este email.</p>`
+    });
+    res.json({ success: true });
+    return;
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao enviar email de recuperação.' });
+    return;
+  }
+});
+
+// Rota de redefinição de senha
+router.post('/reset-password', async (req: Request, res: Response) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
+      return;
+    }
+    if (password.length < 6) {
+      res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres.' });
+      return;
+    }
+    
+    // Buscar usuário pelo token
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: token,
+        resetTokenExpires: { gt: new Date() }
+      }
+    });
+    
+    if (!user) {
+      res.status(400).json({ error: 'Token inválido ou expirado.' });
+      return;
+    }
+    
+    // Hash da nova senha
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Atualizar senha e limpar token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetToken: null,
+        resetTokenExpires: null
+      }
+    });
+    
+    logger.info('Senha redefinida com sucesso', { userId: user.id });
+    res.json({ success: true, message: 'Senha redefinida com sucesso' });
+    return;
+  } catch (error) {
+    logger.error('Erro ao redefinir senha', { error: error instanceof Error ? error.message : 'Erro desconhecido' });
+    res.status(500).json({ error: 'Erro ao redefinir senha.' });
     return;
   }
 });
