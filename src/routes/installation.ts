@@ -8,9 +8,28 @@ const listInstallations: RequestHandler = async (req: Request, res: Response): P
   logger.info('Buscando lista de instalações');
   
   try {
-    const installations = await installationService.listInstallations();
-    logger.info('Instalações encontradas', { count: installations.length });
-    res.json(installations);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const status = req.query.status as string;
+    const search = req.query.search as string;
+    
+    const filters: any = {};
+    if (status && status !== 'all') {
+      filters.success = status === 'success';
+    }
+    if (search) {
+      filters.search = search;
+    }
+    
+    const result = await installationService.listInstallations(page, limit, filters);
+    
+    logger.info('Instalações encontradas', { 
+      count: result.installations.length,
+      total: result.pagination.total,
+      page: result.pagination.page
+    });
+    
+    res.json(result);
   } catch (error) {
     logger.error('Erro ao buscar instalações', { 
       error: error instanceof Error ? error.message : 'Erro desconhecido',

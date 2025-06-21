@@ -6,16 +6,67 @@ import { logger } from '../lib/logger.js';
 import geoip from 'geoip-lite';
 
 export const installationService = {
-  async listInstallations() {
-    const installations = await prisma.installation.findMany({
-      orderBy: {
-        timestamp: 'desc'
-      },
-      include: {
-        apiKey: true
+  async listInstallations(page = 1, limit = 20, filters: any = {}) {
+    const skip = (page - 1) * limit;
+    
+    // Construir where clause baseado nos filtros
+    const where: any = {};
+    
+    if (filters.success !== undefined) {
+      where.success = filters.success;
+    }
+    
+    if (filters.search) {
+      where.OR = [
+        {
+          apiKey: {
+            clientName: {
+              contains: filters.search,
+              mode: 'insensitive'
+            }
+          }
+        },
+        {
+          ipAddress: {
+            contains: filters.search
+          }
+        },
+        {
+          location: {
+            contains: filters.search,
+            mode: 'insensitive'
+          }
+        }
+      ];
+    }
+
+    // Buscar instalações com paginação
+    const [installations, total] = await Promise.all([
+      prisma.installation.findMany({
+        where,
+        orderBy: {
+          timestamp: 'desc'
+        },
+        include: {
+          apiKey: true
+        },
+        skip,
+        take: limit
+      }),
+      prisma.installation.count({ where })
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      installations,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages
       }
-    });
-    return installations;
+    };
   },
 
   async getInstallationStatus(id: string) {

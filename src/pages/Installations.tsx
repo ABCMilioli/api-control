@@ -5,36 +5,65 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Button } from '../components/ui/button';
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious 
+} from '../components/ui/pagination';
 import { useInstallationStore } from '../stores/installationStore';
 import { useAPIKeyStore } from '../stores/apiKeyStore';
 
 export default function Installations() {
-  const { installations, fetchInstallations, loading, error } = useInstallationStore();
+  const { 
+    installations, 
+    fetchInstallations, 
+    loading, 
+    error, 
+    pagination,
+    setPage,
+    setLimit
+  } = useInstallationStore();
   const { apiKeys, fetchAPIKeys } = useAPIKeyStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  // Debounce para busca
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
-    fetchInstallations();
     fetchAPIKeys();
-  }, [fetchInstallations, fetchAPIKeys]);
+  }, [fetchAPIKeys]);
 
-  const filteredInstallations = installations.filter(installation => {
-    const apiKey = apiKeys.find(key => key.id === installation.apiKeyId);
-    const clientName = apiKey?.clientName || '';
+  useEffect(() => {
+    const filters: any = {};
+    if (statusFilter !== 'all') {
+      filters.status = statusFilter;
+    }
+    if (debouncedSearchTerm) {
+      filters.search = debouncedSearchTerm;
+    }
     
-    const matchesSearch = 
-      clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      installation.ipAddress.includes(searchTerm) ||
-      installation.location?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = 
-      statusFilter === 'all' || 
-      (statusFilter === 'success' && installation.success) ||
-      (statusFilter === 'failure' && !installation.success);
-    
-    return matchesSearch && matchesStatus;
-  });
+    fetchInstallations(pagination.page, pagination.limit, filters);
+  }, [fetchInstallations, pagination.page, pagination.limit, statusFilter, debouncedSearchTerm]);
+
+  const handlePageChange = (page: number) => {
+    setPage(page);
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setLimit(limit);
+  };
 
   const getStatusIcon = (success: boolean) => {
     return success ? (
@@ -95,7 +124,10 @@ export default function Installations() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-xl font-semibold">Log de Instalações</h2>
-            <p className="text-gray-600">Histórico de tentativas de validação</p>
+            <p className="text-gray-600">
+              Histórico de tentativas de validação • 
+              Total: {pagination.total} instalações
+            </p>
           </div>
         </div>
 
@@ -117,6 +149,21 @@ export default function Installations() {
               <SelectItem value="failure">Falha</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select 
+            value={pagination.limit.toString()} 
+            onValueChange={(value) => handleLimitChange(parseInt(value))}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10 por página</SelectItem>
+              <SelectItem value="20">20 por página</SelectItem>
+              <SelectItem value="50">50 por página</SelectItem>
+              <SelectItem value="100">100 por página</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <Card>
@@ -126,7 +173,7 @@ export default function Installations() {
           
           <CardContent>
             <div className="space-y-4">
-              {filteredInstallations.map((installation) => {
+              {installations.map((installation) => {
                 const apiKey = apiKeys.find(key => key.id === installation.apiKeyId);
                 
                 return (
@@ -179,11 +226,82 @@ export default function Installations() {
                 );
               })}
               
-              {filteredInstallations.length === 0 && (
+              {installations.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   Nenhuma instalação encontrada com os filtros aplicados.
                 </div>
               )}
+            </div>
+
+            {/* Paginação */}
+            {pagination.totalPages > 1 && (
+              <div className="mt-6 flex justify-center">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (pagination.page > 1) {
+                            handlePageChange(pagination.page - 1);
+                          }
+                        }}
+                        className={pagination.page <= 1 ? 'pointer-events-none opacity-50' : ''}
+                      />
+                    </PaginationItem>
+                    
+                    {/* Páginas */}
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                      let pageNumber;
+                      if (pagination.totalPages <= 5) {
+                        pageNumber = i + 1;
+                      } else if (pagination.page <= 3) {
+                        pageNumber = i + 1;
+                      } else if (pagination.page >= pagination.totalPages - 2) {
+                        pageNumber = pagination.totalPages - 4 + i;
+                      } else {
+                        pageNumber = pagination.page - 2 + i;
+                      }
+                      
+                      return (
+                        <PaginationItem key={pageNumber}>
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handlePageChange(pageNumber);
+                            }}
+                            isActive={pageNumber === pagination.page}
+                          >
+                            {pageNumber}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (pagination.page < pagination.totalPages) {
+                            handlePageChange(pagination.page + 1);
+                          }
+                        }}
+                        className={pagination.page >= pagination.totalPages ? 'pointer-events-none opacity-50' : ''}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+
+            {/* Informações da paginação */}
+            <div className="mt-4 text-center text-sm text-gray-600">
+              Mostrando {((pagination.page - 1) * pagination.limit) + 1} a{' '}
+              {Math.min(pagination.page * pagination.limit, pagination.total)} de{' '}
+              {pagination.total} instalações
             </div>
           </CardContent>
         </Card>
