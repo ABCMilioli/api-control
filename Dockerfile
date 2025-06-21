@@ -24,6 +24,10 @@ RUN npm run build
 # Compile server
 RUN npx tsc -p tsconfig.server.json
 
+# Verify build output
+RUN ls -la dist/ && \
+    echo "Build completed successfully"
+
 # Production stage
 FROM node:20-alpine
 

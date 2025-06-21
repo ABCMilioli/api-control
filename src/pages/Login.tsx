@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -15,6 +15,25 @@ export default function Login() {
     password: '123456'
   });
   const [loading, setLoading] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+
+  useEffect(() => {
+    // Verificar se existe administrador
+    fetch('/api/users/admin-exists')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.exists) {
+          // Se não existe admin, redireciona para registro
+          navigate('/register', { replace: true });
+        } else {
+          setCheckingAdmin(false);
+        }
+      })
+      .catch(() => {
+        // Em caso de erro, assume que não existe admin
+        navigate('/register', { replace: true });
+      });
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +61,17 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  if (checkingAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary-700">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <span className="text-white text-lg">Verificando sistema...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary to-primary-700 flex items-center justify-center p-4">

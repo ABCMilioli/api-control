@@ -1,5 +1,0 @@
-# This is an empty migration.
- 
-migration_name = "20240320000000_init"
-migration_id = "20240320000000_init"
-checksum = "1234567890" 

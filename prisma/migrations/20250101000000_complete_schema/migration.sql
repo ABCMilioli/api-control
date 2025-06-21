@@ -5,26 +5,32 @@ CREATE TYPE "role" AS ENUM ('ADMIN', 'USER');
 CREATE TYPE "ClientStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'BLOCKED');
 
 -- CreateEnum
-CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PAID', 'FAILED', 'REFUNDED', 'CANCELED');
+CREATE TYPE "payment_status" AS ENUM ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REFUNDED');
 
 -- CreateEnum
-CREATE TYPE "PaymentType" AS ENUM ('ONE_TIME', 'SUBSCRIPTION');
+CREATE TYPE "payment_type" AS ENUM ('ONE_TIME', 'RECURRING');
 
 -- CreateEnum
-CREATE TYPE "ProductType" AS ENUM ('ONE_TIME', 'SUBSCRIPTION');
+CREATE TYPE "product_type" AS ENUM ('ONE_TIME', 'SUBSCRIPTION');
 
 -- CreateEnum
-CREATE TYPE "NotificationType" AS ENUM ('info', 'warning', 'success', 'error');
+CREATE TYPE "notification_type" AS ENUM ('info', 'warning', 'success', 'error');
+
+-- CreateEnum
+CREATE TYPE "smtp_encryption" AS ENUM ('NONE', 'SSL', 'TLS');
 
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "nome" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
     "role" "role" NOT NULL DEFAULT 'USER',
     "ativo" BOOLEAN NOT NULL DEFAULT true,
     "dataCriacao" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "dataAtualizacao" TIMESTAMP(3) NOT NULL,
+    "resetToken" TEXT,
+    "resetTokenExpires" TIMESTAMP(3),
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -119,7 +125,7 @@ CREATE TABLE "products" (
     "description" TEXT,
     "price" DECIMAL(10,2) NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'BRL',
-    "type" "ProductType" NOT NULL DEFAULT 'ONE_TIME',
+    "type" "product_type" NOT NULL DEFAULT 'ONE_TIME',
     "maxInstallations" INTEGER,
     "features" JSONB,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
@@ -140,8 +146,8 @@ CREATE TABLE "payments" (
     "clientEmail" TEXT NOT NULL,
     "amount" DECIMAL(10,2) NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'BRL',
-    "status" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
-    "type" "PaymentType" NOT NULL DEFAULT 'ONE_TIME',
+    "status" "payment_status" NOT NULL DEFAULT 'PENDING',
+    "type" "payment_type" NOT NULL DEFAULT 'ONE_TIME',
     "gatewayPaymentId" TEXT,
     "gatewayCustomerId" TEXT,
     "checkoutUrl" TEXT,
@@ -179,12 +185,59 @@ CREATE TABLE "notifications" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "message" TEXT NOT NULL,
-    "type" "NotificationType" NOT NULL,
+    "type" "notification_type" NOT NULL,
     "read" BOOLEAN NOT NULL DEFAULT false,
     "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "userId" TEXT,
 
     CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "smtp_config" (
+    "id" TEXT NOT NULL,
+    "host" TEXT NOT NULL,
+    "port" INTEGER NOT NULL DEFAULT 587,
+    "username" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    "encryption" "smtp_encryption" NOT NULL DEFAULT 'TLS',
+    "fromEmail" TEXT NOT NULL,
+    "fromName" TEXT NOT NULL,
+    "ativo" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "smtp_config_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "webhook_config" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "secret" TEXT,
+    "events" JSONB NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "retryCount" INTEGER NOT NULL DEFAULT 3,
+    "timeout" INTEGER NOT NULL DEFAULT 30000,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "webhook_config_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "system_config" (
+    "id" TEXT NOT NULL DEFAULT 'main',
+    "defaultLimit" INTEGER NOT NULL DEFAULT 100,
+    "defaultExpiry" INTEGER NOT NULL DEFAULT 365,
+    "notifyKeyLimit" BOOLEAN NOT NULL DEFAULT true,
+    "notifyAccessDenied" BOOLEAN NOT NULL DEFAULT true,
+    "notifyWeeklyReport" BOOLEAN NOT NULL DEFAULT false,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "system_config_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
