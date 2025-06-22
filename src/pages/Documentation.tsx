@@ -126,13 +126,41 @@ const systemSpecs = [
   }
 ];
 
+// Função para obter a URL base dinamicamente
+const getBaseUrl = () => {
+  return import.meta.env.VITE_API_HOST || 
+         import.meta.env.NEXT_PUBLIC_APP_URL || 
+         'https://api-control.iacas.top';
+};
+
+// Função para gerar exemplos de cURL com URL dinâmica
+const generateCurlExample = (method: string, endpoint: string, authType: 'jwt' | 'system' | 'both' = 'both') => {
+  const baseUrl = getBaseUrl();
+  const jwtExample = `curl -X ${method} ${baseUrl}${endpoint} \\
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \\
+  -H "Content-Type: application/json"`;
+  
+  const systemExample = `curl -X ${method} ${baseUrl}${endpoint} \\
+  -H "x-system-key: sua_api_key_de_sistema" \\
+  -H "Content-Type: application/json"`;
+  
+  if (authType === 'jwt') return jwtExample;
+  if (authType === 'system') return systemExample;
+  
+  return `# Via JWT Token
+${jwtExample}
+
+# Via API Key de Sistema
+${systemExample}`;
+};
+
 const apiExamples = [
   {
     title: 'Autenticação',
     description: 'Login no sistema',
     method: 'POST',
     endpoint: '/api/auth/login',
-    curl: `curl -X POST https://api.control.com/auth/login \\
+    curl: `curl -X POST ${getBaseUrl()}/api/auth/login \\
   -H "Content-Type: application/json" \\
   -d '{
     "email": "usuario@exemplo.com",
@@ -153,10 +181,8 @@ const apiExamples = [
     title: 'Listar API Keys',
     description: 'Obter todas as chaves de API',
     method: 'GET',
-    endpoint: '/api/keys',
-    curl: `curl -X GET https://api.control.com/keys \\
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \\
-  -H "Content-Type: application/json"`,
+    endpoint: '/api/api-keys',
+    curl: generateCurlExample('GET', '/api/api-keys'),
     response: `{
   "success": true,
   "data": [
@@ -176,17 +202,27 @@ const apiExamples = [
   },
   {
     title: 'Criar API Key',
-    description: 'Criar nova chave de API',
+    description: 'Criar nova chave de API. Requer os dados do cliente e da chave.',
     method: 'POST',
-    endpoint: '/api/keys',
-    curl: `curl -X POST https://api.control.com/keys \\
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \\
-  -H "Content-Type: application/json" \\
+    endpoint: '/api/api-keys',
+    curl: generateCurlExample('POST', '/api/api-keys') + ` \\
   -d '{
-    "clientId": "client-456",
-    "maxInstallations": 5,
-    "expiresAt": "2024-12-31T23:59:59Z"
+    "key": "ak_exemplo_gerada_12345",
+    "clientId": "cln_abc123def456",
+    "clientName": "Empresa Exemplo",
+    "clientEmail": "contato@exemplo.com",
+    "maxInstallations": 10,
+    "expiresAt": "2025-12-31T23:59:59Z"
   }'`,
+    bodyParams: [
+        { name: 'key', type: 'String', required: true, description: 'O valor da chave de API. Deve ser único.' },
+        { name: 'clientId', type: 'String', required: true, description: 'O ID do cliente associado.' },
+        { name: 'clientName', type: 'String', required: true, description: 'O nome do cliente.' },
+        { name: 'clientEmail', type: 'String', required: true, description: 'O email do cliente.' },
+        { name: 'maxInstallations', type: 'Integer', required: true, description: 'Número máximo de instalações. (Deve ser um número)' },
+        { name: 'isActive', type: 'Boolean', required: false, description: 'Define se a chave está ativa. Padrão: true.' },
+        { name: 'expiresAt', type: 'String (ISO Date)', required: false, description: 'Data de expiração da chave no formato ISO 8601.' }
+    ],
     response: `{
   "success": true,
   "data": {
@@ -205,9 +241,7 @@ const apiExamples = [
     description: 'Cadastrar novo cliente',
     method: 'POST',
     endpoint: '/api/clients',
-    curl: `curl -X POST https://api.control.com/clients \\
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \\
-  -H "Content-Type: application/json" \\
+    curl: generateCurlExample('POST', '/api/clients') + ` \\
   -d '{
     "name": "Empresa XYZ",
     "email": "contato@empresaxyz.com",
@@ -232,8 +266,8 @@ const apiExamples = [
     description: 'Verificar se uma instalação é válida e registrar tentativa',
     method: 'POST',
     endpoint: '/api/validate',
-    curl: `curl -X POST https://api-control.iacas.top/api/validate \
-  -H "Content-Type: application/json" \
+    curl: `curl -X POST ${getBaseUrl()}/api/validate \\
+  -H "Content-Type: application/json" \\
   -d '{
     "apiKey": "SUA_CHAVE_API_AQUI",
     "ipAddress": "192.168.1.100",
@@ -254,7 +288,7 @@ const apiExamples = [
     description: 'Consulta se uma instalação está ativa ou foi revogada',
     method: 'GET',
     endpoint: '/api/installations/status/:installationId',
-    curl: `curl -X GET https://api-control.iacas.top/api/installations/status/inst-456`,
+    curl: `curl -X GET ${getBaseUrl()}/api/installations/status/inst-456`,
     response: `{
   "active": true,
   "message": "Instalação ativa"
@@ -265,9 +299,7 @@ const apiExamples = [
     description: 'Dashboard com estatísticas do sistema',
     method: 'GET',
     endpoint: '/api/metrics',
-    curl: `curl -X GET https://api.control.com/metrics \\
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \\
-  -H "Content-Type: application/json"`,
+    curl: generateCurlExample('GET', '/api/metrics', 'jwt'),
     response: `{
   "success": true,
   "data": {
@@ -360,11 +392,53 @@ export default function Documentation() {
               </CardHeader>
               <CardContent>
                 <div className="bg-gray-100 p-4 rounded-lg">
-                  <code className="text-sm">https://api.control.com</code>
+                  <code className="text-sm">
+                    {import.meta.env.VITE_API_HOST || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://api-control.iacas.top'}
+                  </code>
                 </div>
                 <p className="mt-2 text-gray-600">
-                  Todas as requisições devem incluir o cabeçalho de autorização (exceto login).
+                  A maioria das requisições requer autenticação. O sistema suporta dois métodos de autenticação.
                 </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  A URL base é configurada através da variável de ambiente <code>NEXT_PUBLIC_APP_URL</code>
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Autenticação */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="w-6 h-6" />
+                  Métodos de Autenticação
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="font-medium mb-2">1. JWT Token (Recomendado para usuários)</h4>
+                  <p className="text-gray-600 mb-2">Para usuários logados via interface web:</p>
+                  <div className="bg-gray-900 text-green-400 p-3 rounded-lg">
+                    <code className="text-sm">Authorization: Bearer &lt;seu_jwt_token&gt;</code>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium mb-2">2. API Key de Sistema (Para automações)</h4>
+                  <p className="text-gray-600 mb-2">Para scripts, CI/CD e integrações externas:</p>
+                  <div className="bg-gray-900 text-green-400 p-3 rounded-lg">
+                    <code className="text-sm">x-system-key: &lt;sua_api_key_de_sistema&gt;</code>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2">
+                    A API Key de sistema deve ser configurada na variável de ambiente <code>SYSTEM_API_KEY</code>
+                  </p>
+                </div>
+
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Nota:</strong> O sistema prioriza a API Key de sistema. Se ambos os headers estiverem presentes, 
+                    a API Key de sistema será verificada primeiro.
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -384,8 +458,35 @@ export default function Documentation() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {example.bodyParams && (
+                      <div>
+                        <h5 className="font-medium mb-2">Parâmetros do Corpo (Body)</h5>
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="w-full text-sm divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="text-left p-3 font-semibold text-gray-700">Nome</th>
+                                <th className="text-left p-3 font-semibold text-gray-700">Tipo</th>
+                                <th className="text-left p-3 font-semibold text-gray-700">Obrigatório</th>
+                                <th className="text-left p-3 font-semibold text-gray-700">Descrição</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {example.bodyParams.map((param) => (
+                                <tr key={param.name}>
+                                  <td className="p-3 whitespace-nowrap"><code className="bg-gray-100 p-1 rounded">{param.name}</code></td>
+                                  <td className="p-3 whitespace-nowrap"><code className="bg-gray-100 p-1 rounded">{param.type}</code></td>
+                                  <td className="p-3 whitespace-nowrap">{param.required ? <Badge>Sim</Badge> : <Badge variant="secondary">Não</Badge>}</td>
+                                  <td className="p-3">{param.description}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                     <div>
-                      <h5 className="font-medium mb-2">cURL</h5>
+                      <h5 className="font-medium mb-2">Exemplo (cURL)</h5>
                       <div className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto">
                         <pre className="text-sm whitespace-pre-wrap">
                           <code>{example.curl}</code>
@@ -393,7 +494,7 @@ export default function Documentation() {
                       </div>
                     </div>
                     <div>
-                      <h5 className="font-medium mb-2">Resposta</h5>
+                      <h5 className="font-medium mb-2">Exemplo de Resposta</h5>
                       <div className="bg-gray-100 p-4 rounded-lg overflow-x-auto">
                         <pre className="text-sm">
                           <code>{example.response}</code>

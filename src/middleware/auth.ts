@@ -13,6 +13,7 @@ declare global {
         email: string;
         role: string;
       };
+      authType?: 'jwt' | 'system';
     }
   }
 }
@@ -25,6 +26,29 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
         return next();
       }
 
+      // Primeiro, verifica se há API Key de sistema
+      const systemApiKey = req.headers['x-system-key'] as string;
+      
+      if (systemApiKey && authConfig.systemApiKey) {
+        if (systemApiKey === authConfig.systemApiKey) {
+          logger.info('Acesso via API Key de sistema', {
+            path: req.path,
+            method: req.method,
+            ip: req.ip
+          });
+          req.authType = 'system';
+          return next();
+        } else {
+          logger.warn('API Key de sistema inválida', {
+            path: req.path,
+            method: req.method,
+            ip: req.ip
+          });
+          return res.status(401).json({ error: 'API Key de sistema inválida' });
+        }
+      }
+
+      // Se não há API Key de sistema, verifica JWT
       const authHeader = req.headers.authorization;
 
       if (!authHeader) {
@@ -63,6 +87,13 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
         }
 
         req.user = user;
+        req.authType = 'jwt';
+        logger.info('Acesso via JWT', {
+          userId: user.id,
+          email: user.email,
+          path: req.path,
+          method: req.method
+        });
         next();
       } catch (error) {
         logger.error('Erro ao verificar token', {

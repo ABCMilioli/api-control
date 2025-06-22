@@ -51,9 +51,52 @@ Um sistema completo para gerenciamento e controle de acesso de API Keys com limi
 
 ### 🔐 **Autenticação e Segurança**
 - ✅ JWT tokens
+- ✅ **Dupla autenticação (JWT + API Key de Sistema)**
 - ✅ Middleware de autenticação
 - ✅ Validação de permissões
 - ✅ Logs de auditoria completos
+
+### **API Key de Sistema**
+O sistema suporta **dupla autenticação** para endpoints de manipulação:
+
+#### **Métodos de Autenticação**
+1. **JWT Token** - Para usuários logados via interface web
+2. **API Key de Sistema** - Para automações, scripts e integrações externas
+
+#### **Configuração**
+```bash
+# Adicione ao seu .env ou variáveis de ambiente
+SYSTEM_API_KEY=sua_api_key_de_sistema_muito_segura_aqui
+```
+
+#### **Uso**
+```bash
+# Via JWT Token (usuários)
+curl -H "Authorization: Bearer <jwt_token>" /api/api-keys
+
+# Via API Key de Sistema (automações)
+curl -H "x-system-key: <system_api_key>" /api/api-keys
+```
+
+#### **Configuração de URL**
+A URL base é configurada através da variável de ambiente `NEXT_PUBLIC_APP_URL`:
+
+```bash
+# Exemplo de uso com variável de ambiente
+BASE_URL="${NEXT_PUBLIC_APP_URL:-https://api-control.iacas.top}"
+curl -H "x-system-key: $SYSTEM_API_KEY" "$BASE_URL/api/api-keys"
+```
+
+#### **Endpoints Suportados**
+- `/api/api-keys/*` - Todas as operações de API Keys
+- `/api/clients/*` - Todas as operações de clientes
+- `/api/system-config/*` - Configurações do sistema
+- `/api/webhooks/*` - Gerenciamento de webhooks
+
+Consulte o [Guia da API Key de Sistema](SYSTEM_API_KEY_GUIDE.md) para detalhes completos.
+
+### **Exemplos Práticos**
+Consulte o arquivo [examples/env-example.sh](examples/env-example.sh) para exemplos completos de uso com variáveis de ambiente.
 
 ## 🛠️ Tecnologias
 
@@ -102,6 +145,10 @@ DATABASE_URL="postgresql://usuario:senha@localhost:5432/api_control"
 
 # JWT
 JWT_SECRET="sua-chave-secreta-jwt"
+JWT_EXPIRES_IN="7d"
+
+# API Key de Sistema (para automações)
+SYSTEM_API_KEY="sua_api_key_de_sistema_muito_segura_aqui"
 
 # Servidor
 PORT=3000
