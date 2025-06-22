@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
@@ -126,47 +127,63 @@ const systemSpecs = [
   }
 ];
 
-// Função para obter a URL base dinamicamente
-const getBaseUrl = () => {
-  return import.meta.env.VITE_API_HOST || 
-         import.meta.env.NEXT_PUBLIC_APP_URL || 
-         'https://api-control.iacas.top';
-};
+export default function Documentation() {
+  const [baseUrl, setBaseUrl] = useState('');
 
-// Função para gerar exemplos de cURL com URL dinâmica
-const generateCurlExample = (method: string, endpoint: string, authType: 'jwt' | 'system' | 'both' = 'both') => {
-  const baseUrl = getBaseUrl();
-  const jwtExample = `curl -X ${method} ${baseUrl}${endpoint} \\
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \\
-  -H "Content-Type: application/json"`;
-  
-  const systemExample = `curl -X ${method} ${baseUrl}${endpoint} \\
-  -H "x-system-key: sua_api_key_de_sistema" \\
-  -H "Content-Type: application/json"`;
-  
-  if (authType === 'jwt') return jwtExample;
-  if (authType === 'system') return systemExample;
-  
-  return `# Via JWT Token
-${jwtExample}
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          const config = await response.json();
+          setBaseUrl(config.appUrl);
+        } else {
+          setBaseUrl('https://api-control.iacas.top');
+        }
+      } catch (error) {
+        console.error('Falha ao buscar a configuração da aplicação:', error);
+        setBaseUrl('https://api-control.iacas.top');
+      }
+    };
+    fetchConfig();
+  }, []);
 
-# Via API Key de Sistema
-${systemExample}`;
-};
+  const generateCurlExample = (method: string, endpoint: string, authType: 'jwt' | 'system' | 'both' | 'none' = 'both', bodyParams: string | null = null) => {
+    if (!baseUrl) {
+      return 'Carregando exemplo dinâmico...';
+    }
 
-const apiExamples = [
-  {
-    title: 'Autenticação',
-    description: 'Login no sistema',
-    method: 'POST',
-    endpoint: '/api/auth/login',
-    curl: `curl -X POST ${getBaseUrl()}/api/auth/login \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "email": "usuario@exemplo.com",
-    "password": "senha123"
-  }'`,
-    response: `{
+    const url = `${baseUrl}${endpoint}`;
+    let finalCurl = '';
+
+    const jwtExample = `curl -X ${method} ${url} \\\n  -H "Authorization: Bearer <seu_jwt_token>" \\\n  -H "Content-Type: application/json"`;
+    const systemExample = `curl -X ${method} ${url} \\\n  -H "x-system-key: <sua_api_key>" \\\n  -H "Content-Type: application/json"`;
+    const noAuthExample = `curl -X ${method} ${url}`;
+
+    switch (authType) {
+      case 'jwt': finalCurl = jwtExample; break;
+      case 'system': finalCurl = systemExample; break;
+      case 'none': finalCurl = noAuthExample; break;
+      case 'both':
+      default:
+        finalCurl = `# Via JWT Token (para usuários da interface)\n${jwtExample}\n\n# Via API Key de Sistema (para automações)\n${systemExample}`;
+        break;
+    }
+
+    if (bodyParams) {
+      finalCurl += ` \\\n  -H "Content-Type: application/json" \\\n  -d '${bodyParams}'`;
+    }
+    return finalCurl;
+  };
+  
+  const apiExamples = [
+    {
+      title: 'Autenticação',
+      description: 'Login no sistema',
+      method: 'POST',
+      endpoint: '/api/auth/login',
+      curl: generateCurlExample('POST', '/api/auth/login', 'none', '{\n    "email": "usuario@exemplo.com",\n    "password": "senha123"\n  }'),
+      response: `{
   "success": true,
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
@@ -176,14 +193,14 @@ const apiExamples = [
     "role": "admin"
   }
 }`
-  },
-  {
-    title: 'Listar API Keys',
-    description: 'Obter todas as chaves de API',
-    method: 'GET',
-    endpoint: '/api/api-keys',
-    curl: generateCurlExample('GET', '/api/api-keys'),
-    response: `{
+    },
+    {
+      title: 'Listar API Keys',
+      description: 'Obter todas as chaves de API',
+      method: 'GET',
+      endpoint: '/api/api-keys',
+      curl: generateCurlExample('GET', '/api/api-keys'),
+      response: `{
   "success": true,
   "data": [
     {
@@ -199,31 +216,23 @@ const apiExamples = [
     }
   ]
 }`
-  },
-  {
-    title: 'Criar API Key',
-    description: 'Criar nova chave de API. Requer os dados do cliente e da chave.',
-    method: 'POST',
-    endpoint: '/api/api-keys',
-    curl: generateCurlExample('POST', '/api/api-keys') + ` \\
-  -d '{
-    "key": "ak_exemplo_gerada_12345",
-    "clientId": "cln_abc123def456",
-    "clientName": "Empresa Exemplo",
-    "clientEmail": "contato@exemplo.com",
-    "maxInstallations": 10,
-    "expiresAt": "2025-12-31T23:59:59Z"
-  }'`,
-    bodyParams: [
-        { name: 'key', type: 'String', required: true, description: 'O valor da chave de API. Deve ser único.' },
-        { name: 'clientId', type: 'String', required: true, description: 'O ID do cliente associado.' },
-        { name: 'clientName', type: 'String', required: true, description: 'O nome do cliente.' },
-        { name: 'clientEmail', type: 'String', required: true, description: 'O email do cliente.' },
-        { name: 'maxInstallations', type: 'Integer', required: true, description: 'Número máximo de instalações. (Deve ser um número)' },
-        { name: 'isActive', type: 'Boolean', required: false, description: 'Define se a chave está ativa. Padrão: true.' },
-        { name: 'expiresAt', type: 'String (ISO Date)', required: false, description: 'Data de expiração da chave no formato ISO 8601.' }
-    ],
-    response: `{
+    },
+    {
+      title: 'Criar API Key',
+      description: 'Criar nova chave de API. Requer os dados do cliente e da chave.',
+      method: 'POST',
+      endpoint: '/api/api-keys',
+      curl: generateCurlExample('POST', '/api/api-keys', 'both', '{\n    "key": "ak_exemplo_gerada_12345",\n    "clientId": "cln_abc123def456",\n    "clientName": "Empresa Exemplo",\n    "clientEmail": "contato@exemplo.com",\n    "maxInstallations": 10,\n    "expiresAt": "2025-12-31T23:59:59Z"\n  }'),
+      bodyParams: [
+          { name: 'key', type: 'String', required: true, description: 'O valor da chave de API. Deve ser único.' },
+          { name: 'clientId', type: 'String', required: true, description: 'O ID do cliente associado.' },
+          { name: 'clientName', type: 'String', required: true, description: 'O nome do cliente.' },
+          { name: 'clientEmail', type: 'String', required: true, description: 'O email do cliente.' },
+          { name: 'maxInstallations', type: 'Integer', required: true, description: 'Número máximo de instalações. (Deve ser um número)' },
+          { name: 'isActive', type: 'Boolean', required: false, description: 'Define se a chave está ativa. Padrão: true.' },
+          { name: 'expiresAt', type: 'String (ISO Date)', required: false, description: 'Data de expiração da chave no formato ISO 8601.' }
+      ],
+      response: `{
   "success": true,
   "data": {
     "id": "key-789",
@@ -235,20 +244,14 @@ const apiExamples = [
     "expiresAt": "2024-12-31T23:59:59Z"
   }
 }`
-  },
-  {
-    title: 'Criar Cliente',
-    description: 'Cadastrar novo cliente',
-    method: 'POST',
-    endpoint: '/api/clients',
-    curl: generateCurlExample('POST', '/api/clients') + ` \\
-  -d '{
-    "name": "Empresa XYZ",
-    "email": "contato@empresaxyz.com",
-    "company": "XYZ Tecnologia Ltda",
-    "phone": "+55 11 99999-9999"
-  }'`,
-    response: `{
+    },
+    {
+      title: 'Criar Cliente',
+      description: 'Cadastrar novo cliente',
+      method: 'POST',
+      endpoint: '/api/clients',
+      curl: generateCurlExample('POST', '/api/clients', 'both', '{\n    "name": "Empresa XYZ",\n    "email": "contato@empresaxyz.com",\n    "company": "XYZ Tecnologia Ltda",\n    "phone": "+55 11 99999-9999"\n  }'),
+      response: `{
   "success": true,
   "data": {
     "id": "client-101",
@@ -260,20 +263,14 @@ const apiExamples = [
     "createdAt": "2024-06-15T14:30:00Z"
   }
 }`
-  },
-  {
-    title: 'Validar Instalação',
-    description: 'Verificar se uma instalação é válida e registrar tentativa',
-    method: 'POST',
-    endpoint: '/api/validate',
-    curl: `curl -X POST ${getBaseUrl()}/api/validate \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "apiKey": "SUA_CHAVE_API_AQUI",
-    "ipAddress": "192.168.1.100",
-    "userAgent": "MeuApp/1.0"
-  }'`,
-    response: `{
+    },
+    {
+      title: 'Validar Instalação',
+      description: 'Verificar se uma instalação é válida e registrar tentativa',
+      method: 'POST',
+      endpoint: '/api/validate',
+      curl: generateCurlExample('POST', '/api/validate', 'none', '{\n    "apiKey": "SUA_CHAVE_API_AQUI",\n    "ipAddress": "192.168.1.100",\n    "userAgent": "MeuApp/1.0"\n  }'),
+      response: `{
   "success": true,
   "valid": true,
   "data": {
@@ -282,25 +279,25 @@ const apiExamples = [
     "replacedInstallationId": "inst-123" // se houve substituição
   }
 }`
-  },
-  {
-    title: 'Verificar Status da Instalação',
-    description: 'Consulta se uma instalação está ativa ou foi revogada',
-    method: 'GET',
-    endpoint: '/api/installations/status/:installationId',
-    curl: `curl -X GET ${getBaseUrl()}/api/installations/status/inst-456`,
-    response: `{
+    },
+    {
+      title: 'Verificar Status da Instalação',
+      description: 'Consulta se uma instalação está ativa ou foi revogada',
+      method: 'GET',
+      endpoint: '/api/installations/status/:installationId',
+      curl: generateCurlExample('GET', '/api/installations/status/inst-456', 'none'),
+      response: `{
   "active": true,
   "message": "Instalação ativa"
 }`
-  },
-  {
-    title: 'Obter Métricas',
-    description: 'Dashboard com estatísticas do sistema',
-    method: 'GET',
-    endpoint: '/api/metrics',
-    curl: generateCurlExample('GET', '/api/metrics', 'jwt'),
-    response: `{
+    },
+    {
+      title: 'Obter Métricas',
+      description: 'Dashboard com estatísticas do sistema',
+      method: 'GET',
+      endpoint: '/api/metrics',
+      curl: generateCurlExample('GET', '/api/metrics', 'jwt'),
+      response: `{
   "success": true,
   "data": {
     "totalActiveKeys": 45,
@@ -309,10 +306,9 @@ const apiExamples = [
     "successRate": 98.5
   }
 }`
-  }
-];
+    }
+  ];
 
-export default function Documentation() {
   return (
     <div className="min-h-screen bg-gray-50">
       <ScrollArea className="h-screen">
@@ -393,7 +389,7 @@ export default function Documentation() {
               <CardContent>
                 <div className="bg-gray-100 p-4 rounded-lg">
                   <code className="text-sm">
-                    {import.meta.env.VITE_API_HOST || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://api-control.iacas.top'}
+                    {baseUrl || 'Carregando...'}
                   </code>
                 </div>
                 <p className="mt-2 text-gray-600">
@@ -454,7 +450,7 @@ export default function Documentation() {
                     </div>
                     <p className="text-gray-600 text-sm">{example.description}</p>
                     <div className="bg-blue-50 p-2 rounded">
-                      <code className="text-sm text-blue-800">{example.endpoint}</code>
+                      <code className="text-sm text-blue-800">{baseUrl ? `${baseUrl}${example.endpoint}`: example.endpoint}</code>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -493,14 +489,16 @@ export default function Documentation() {
                         </pre>
                       </div>
                     </div>
-                    <div>
-                      <h5 className="font-medium mb-2">Exemplo de Resposta</h5>
-                      <div className="bg-gray-100 p-4 rounded-lg overflow-x-auto">
-                        <pre className="text-sm">
-                          <code>{example.response}</code>
-                        </pre>
+                    {example.response && (
+                      <div>
+                        <h5 className="font-medium mb-2">Exemplo de Resposta</h5>
+                        <div className="bg-gray-100 p-4 rounded-lg overflow-x-auto">
+                          <pre className="text-sm">
+                            <code>{example.response}</code>
+                          </pre>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
